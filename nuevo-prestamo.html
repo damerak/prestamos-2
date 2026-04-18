@@ -63,8 +63,9 @@
     <h2>Crear Préstamo</h2>
     <form id="prestamoForm">
         <div class="form-grid">
+            <!-- Selector de Clientes -->
             <select id="selectCliente" class="full-width" required>
-                <option value="">Seleccionar Cliente...</option>
+                <option value="">Cargando clientes...</option>
             </select>
             <input type="text" id="monto" placeholder="Monto (Ej: 600.000)" required>
             <input type="number" id="porcentaje" placeholder="%" value="20" required>
@@ -99,23 +100,25 @@
     const txtTotal = document.getElementById('txtTotal');
     const btnGuardar = document.getElementById('btnGuardar');
 
-    // Cargar clientes desde la misma llave que usa clientes.html ('mis_clientes')
+    // --- CORRECCIÓN AQUÍ: Ahora usa la llave 'clientes' ---
     function cargarClientes() {
-        const clientes = JSON.parse(localStorage.getItem('mis_clientes')) || [];
+        const clientes = JSON.parse(localStorage.getItem('clientes')) || [];
         
         selectCliente.innerHTML = '<option value="">Seleccionar Cliente...</option>';
         
-        // Ordenar alfabéticamente para que sea más fácil encontrarlos
+        if (clientes.length === 0) {
+            selectCliente.innerHTML = '<option value="">No hay clientes registrados</option>';
+            return;
+        }
+
         clientes.sort((a, b) => a.nombres.localeCompare(b.nombres));
 
-        if (clientes.length > 0) {
-            clientes.forEach(cliente => {
-                let option = document.createElement('option');
-                option.value = cliente.nombres; 
-                option.textContent = cliente.nombres;
-                selectCliente.appendChild(option);
-            });
-        }
+        clientes.forEach(cliente => {
+            let option = document.createElement('option');
+            option.value = cliente.nombres; 
+            option.textContent = cliente.nombres;
+            selectCliente.appendChild(option);
+        });
         
         txtFecha.textContent = new Date().toLocaleDateString();
     }
@@ -145,10 +148,7 @@
 
     function imprimirNuevoPrestamo(datos) {
         const empresa = JSON.parse(localStorage.getItem('datosEmpresa')) || { nombre: "EMPRESA", telefono: "000", ciudad: "BOGOTA" };
-        const cf = JSON.parse(localStorage.getItem('ticketConfig')) || { 
-            width: 58, marginTop: 10, marginSide: 5, fontSize: 12, 
-            separator: "--------------------------------", bold: false 
-        };
+        const cf = JSON.parse(localStorage.getItem('ticketConfig')) || { width: 58, marginTop: 10, marginSide: 5, fontSize: 12, separator: "--------------------------------", bold: false };
 
         const iframe = document.getElementById('iframeImpresion');
         const win = iframe.contentWindow;
@@ -160,14 +160,7 @@
             <head>
                 <style>
                     @page { margin: 0; size: auto; }
-                    body { 
-                        width: 48mm; margin: 0 auto; 
-                        padding: ${cf.marginTop}px 0; 
-                        text-align: center; color: #000;
-                        font-family: 'Courier New', monospace;
-                        font-size: ${cf.fontSize}px;
-                        line-height: 1.2;
-                    }
+                    body { width: 48mm; margin: 0 auto; padding: ${cf.marginTop}px 0; text-align: center; color: #000; font-family: 'Courier New', monospace; font-size: ${cf.fontSize}px; line-height: 1.2; }
                     .bold { font-weight: bold; }
                     .sep { margin: 5px 0; overflow: hidden; white-space: nowrap; }
                     .row { display: flex; justify-content: space-between; }
@@ -177,7 +170,6 @@
             <body>
                 <div class="bold">${empresa.nombre.toUpperCase()}</div>
                 <div>TEL: ${empresa.telefono}</div>
-                <div>${empresa.ciudad.toUpperCase()}</div>
                 <div class="sep">${cf.separator}</div>
                 <div class="bold">NUEVO PRÉSTAMO</div>
                 <div class="sep">${cf.separator}</div>
@@ -187,27 +179,20 @@
                 </div>
                 <div class="sep">${cf.separator}</div>
                 <div class="row"><span>MONTO:</span><span>${formatearCOP(datos.monto)}</span></div>
-                <div class="row"><span>INTERÉS:</span><span>${datos.porcentaje}%</span></div>
                 <div class="row"><span>CUOTAS:</span><span>${datos.cuotas}</span></div>
-                <div class="sep">${cf.separator}</div>
-                <div class="row bold"><span>ENTREGADO:</span><span>${formatearCOP(datos.monto * 0.95)}</span></div>
                 <div class="box">
                     <div class="bold">TOTAL A PAGAR</div>
                     <div class="bold" style="font-size: 1.2em;">${datos.total}</div>
                 </div>
-                <div class="bold">VALOR CUOTA: ${txtCuota.textContent}</div>
+                <div class="bold">CUOTA: ${txtCuota.textContent}</div>
                 <div class="sep">${cf.separator}</div>
-                <div style="margin-top:10px;">*** Gracias por su confianza ***</div>
+                <div style="margin-top:10px;">¡Gracias!</div>
                 <div style="height:50px">.</div>
             </body>
             </html>
         `);
         doc.close();
-
-        setTimeout(() => {
-            win.focus();
-            win.print();
-        }, 500);
+        setTimeout(() => { win.focus(); win.print(); }, 500);
     }
 
     form.addEventListener('submit', (e) => {
@@ -219,27 +204,29 @@
         }
 
         btnGuardar.disabled = true;
-        btnGuardar.textContent = "Guardando...";
 
-        const montoReal = inputMonto.value.replace(/\./g, "");
+        const montoReal = parseFloat(inputMonto.value.replace(/\./g, ""));
+        const totalLimpio = parseFloat(txtTotal.textContent.replace(/[^0-9]/g,""));
+
         const prestamo = { 
             id: Date.now().toString(), 
+            id_db: Date.now().toString(), // Para compatibilidad con prestamos.html
             cliente: selectCliente.value, 
-            monto: parseFloat(montoReal), 
+            monto: montoReal, 
             porcentaje: inputPorcentaje.value, 
             cuotas: inputCuotas.value, 
             total: txtTotal.textContent, 
-            saldo: parseFloat(txtTotal.textContent.replace(/[^0-9]/g,"")), 
+            saldo: totalLimpio, 
             fecha: new Date().toLocaleDateString()
         };
         
-        const log = { ...prestamo, tipo: 'nuevo', hora: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) };
+        const log = { ...prestamo, tipo: 'nuevo', monto: montoReal, saldo: totalLimpio, hora: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) };
 
         try {
-            // Guardar en 'mis_prestamos'
-            const prestamosActuales = JSON.parse(localStorage.getItem('mis_prestamos')) || [];
+            // --- CORRECCIÓN AQUÍ: Ahora guarda en 'prestamos' ---
+            const prestamosActuales = JSON.parse(localStorage.getItem('prestamos')) || [];
             prestamosActuales.push(prestamo);
-            localStorage.setItem('mis_prestamos', JSON.stringify(prestamosActuales));
+            localStorage.setItem('prestamos', JSON.stringify(prestamosActuales));
 
             // Guardar en historial
             const historialActual = JSON.parse(localStorage.getItem('historial_impresiones')) || [];
@@ -247,21 +234,12 @@
             localStorage.setItem('historial_impresiones', JSON.stringify(historialActual));
 
             imprimirNuevoPrestamo(prestamo);
-
-            form.reset();
-            txtBono.textContent = "$0";
-            txtEntregado.textContent = "$0";
-            txtCuota.textContent = "$0";
-            txtTotal.textContent = "$0";
-            
-            alert("✅ Préstamo guardado e impreso con éxito.");
+            alert("✅ Préstamo guardado.");
+            window.location.href = "index.html";
 
         } catch (error) {
-            console.error(error);
             alert("Error al guardar.");
-        } finally {
             btnGuardar.disabled = false;
-            btnGuardar.textContent = "Guardar e Imprimir";
         }
     });
 
