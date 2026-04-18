@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crear Préstamo</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    
     <style>
         :root {
             --bg-color: #121420;
@@ -18,8 +19,17 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .btn-regresar { display: inline-block; margin-bottom: 15px; color: var(--text-dim); text-decoration: none; font-size: 0.9rem; transition: 0.3s; }
+        
+        .btn-regresar {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: 0.3s;
+        }
         .btn-regresar:hover { color: var(--accent); }
+
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
         .card { width: 100%; max-width: 600px; animation: fadeIn 0.6s ease-out; }
@@ -28,16 +38,22 @@
         .full-width { grid-column: span 2; }
         input, select { width: 100%; padding: 12px 15px; background-color: var(--input-bg); border: 1px solid var(--input-border); border-radius: 8px; color: white; font-size: 1rem; outline: none; transition: all 0.3s ease; }
         input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(93, 95, 239, 0.15); }
+        
         .summary-box { margin-top: 25px; background-color: #0b0d14; padding: 20px; border-radius: 8px; border-bottom: 2px solid var(--input-border); }
         .summary-line { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; }
         .summary-line span:last-child { color: var(--text-main); font-weight: 500; }
         .entregado-val { color: var(--success) !important; font-weight: bold !important; }
+        
         .total-row { margin-top: 15px; padding-top: 15px; border-top: 1px solid #2e344a; display: flex; justify-content: space-between; align-items: center; }
         .total-label { color: var(--accent); font-weight: 600; font-size: 1.2rem; }
         .total-amount { font-size: 1.4rem; font-weight: 600; color: #fff; }
+        
         button { width: 100%; margin-top: 20px; padding: 16px; background-color: var(--accent); color: white; border: none; border-radius: 10px; font-size: 1rem; font-weight: 700; text-transform: uppercase; cursor: pointer; transition: 0.3s; }
         button:hover { background-color: var(--accent-hover); }
+        button:disabled { background-color: #444; cursor: not-allowed; }
+
         #iframeImpresion { position: absolute; width: 0; height: 0; border: none; visibility: hidden; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
@@ -67,6 +83,7 @@
         <button type="submit" id="btnGuardar">Guardar e Imprimir</button>
     </form>
 </div>
+
 <iframe id="iframeImpresion"></iframe>
 
 <script>
@@ -82,14 +99,24 @@
     const txtTotal = document.getElementById('txtTotal');
     const btnGuardar = document.getElementById('btnGuardar');
 
+    // Cargar clientes desde la misma llave que usa clientes.html ('mis_clientes')
     function cargarClientes() {
-        const clientes = JSON.parse(localStorage.getItem('clientes')) || [];
+        const clientes = JSON.parse(localStorage.getItem('mis_clientes')) || [];
+        
         selectCliente.innerHTML = '<option value="">Seleccionar Cliente...</option>';
-        clientes.forEach(c => {
-            let option = document.createElement('option');
-            option.value = c.nombres; option.textContent = c.nombres;
-            selectCliente.appendChild(option);
-        });
+        
+        // Ordenar alfabéticamente para que sea más fácil encontrarlos
+        clientes.sort((a, b) => a.nombres.localeCompare(b.nombres));
+
+        if (clientes.length > 0) {
+            clientes.forEach(cliente => {
+                let option = document.createElement('option');
+                option.value = cliente.nombres; 
+                option.textContent = cliente.nombres;
+                selectCliente.appendChild(option);
+            });
+        }
+        
         txtFecha.textContent = new Date().toLocaleDateString();
     }
 
@@ -109,28 +136,91 @@
         e.target.value = e.target.value.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         calcular();
     });
+    
     [inputPorcentaje, inputCuotas].forEach(el => el.addEventListener('input', calcular));
 
-    function formatearCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); }
+    function formatearCOP(n) { 
+        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); 
+    }
 
     function imprimirNuevoPrestamo(datos) {
         const empresa = JSON.parse(localStorage.getItem('datosEmpresa')) || { nombre: "EMPRESA", telefono: "000", ciudad: "BOGOTA" };
-        const cf = JSON.parse(localStorage.getItem('ticketConfig')) || { width: 58, marginTop: 10, marginSide: 5, fontSize: 12, separator: "--------------------------------", bold: false };
+        const cf = JSON.parse(localStorage.getItem('ticketConfig')) || { 
+            width: 58, marginTop: 10, marginSide: 5, fontSize: 12, 
+            separator: "--------------------------------", bold: false 
+        };
 
         const iframe = document.getElementById('iframeImpresion');
         const win = iframe.contentWindow;
         const doc = win.document;
 
         doc.open();
-        doc.write(`<html><head><style>@page { margin: 0; size: auto; } body { width: 48mm; margin: 0 auto; padding: ${cf.marginTop}px 0; text-align: center; color: #000; font-family: 'Courier New', monospace; font-size: ${cf.fontSize}px; line-height: 1.2; } .bold { font-weight: bold; } .sep { margin: 5px 0; overflow: hidden; white-space: nowrap; } .row { display: flex; justify-content: space-between; } .box { border: 1px solid #000; padding: 5px; margin: 8px 0; }</style></head>
-            <body><div class="bold">${empresa.nombre.toUpperCase()}</div><div>TEL: ${empresa.telefono}</div><div>${empresa.ciudad.toUpperCase()}</div><div class="sep">${cf.separator}</div><div class="bold">NUEVO PRÉSTAMO</div><div class="sep">${cf.separator}</div><div style="text-align:left">FECHA: ${new Date().toLocaleDateString()}<br>CLIENTE: <span class="bold">${datos.cliente.toUpperCase()}</span></div><div class="sep">${cf.separator}</div><div class="row"><span>MONTO:</span><span>${formatearCOP(datos.monto)}</span></div><div class="row"><span>INTERÉS:</span><span>${datos.porcentaje}%</span></div><div class="row"><span>CUOTAS:</span><span>${datos.cuotas}</span></div><div class="sep">${cf.separator}</div><div class="row bold"><span>ENTREGADO:</span><span>${formatearCOP(datos.monto * 0.95)}</span></div><div class="box"><div class="bold">TOTAL A PAGAR</div><div class="bold" style="font-size: 1.2em;">${datos.total}</div></div><div class="bold">VALOR CUOTA: ${txtCuota.textContent}</div><div class="sep">${cf.separator}</div><div style="margin-top:10px;">*** Gracias por su confianza ***</div><div style="height:50px">.</div></body></html>`);
+        doc.write(`
+            <html>
+            <head>
+                <style>
+                    @page { margin: 0; size: auto; }
+                    body { 
+                        width: 48mm; margin: 0 auto; 
+                        padding: ${cf.marginTop}px 0; 
+                        text-align: center; color: #000;
+                        font-family: 'Courier New', monospace;
+                        font-size: ${cf.fontSize}px;
+                        line-height: 1.2;
+                    }
+                    .bold { font-weight: bold; }
+                    .sep { margin: 5px 0; overflow: hidden; white-space: nowrap; }
+                    .row { display: flex; justify-content: space-between; }
+                    .box { border: 1px solid #000; padding: 5px; margin: 8px 0; }
+                </style>
+            </head>
+            <body>
+                <div class="bold">${empresa.nombre.toUpperCase()}</div>
+                <div>TEL: ${empresa.telefono}</div>
+                <div>${empresa.ciudad.toUpperCase()}</div>
+                <div class="sep">${cf.separator}</div>
+                <div class="bold">NUEVO PRÉSTAMO</div>
+                <div class="sep">${cf.separator}</div>
+                <div style="text-align:left">
+                    FECHA: ${new Date().toLocaleDateString()}<br>
+                    CLIENTE: <span class="bold">${datos.cliente.toUpperCase()}</span>
+                </div>
+                <div class="sep">${cf.separator}</div>
+                <div class="row"><span>MONTO:</span><span>${formatearCOP(datos.monto)}</span></div>
+                <div class="row"><span>INTERÉS:</span><span>${datos.porcentaje}%</span></div>
+                <div class="row"><span>CUOTAS:</span><span>${datos.cuotas}</span></div>
+                <div class="sep">${cf.separator}</div>
+                <div class="row bold"><span>ENTREGADO:</span><span>${formatearCOP(datos.monto * 0.95)}</span></div>
+                <div class="box">
+                    <div class="bold">TOTAL A PAGAR</div>
+                    <div class="bold" style="font-size: 1.2em;">${datos.total}</div>
+                </div>
+                <div class="bold">VALOR CUOTA: ${txtCuota.textContent}</div>
+                <div class="sep">${cf.separator}</div>
+                <div style="margin-top:10px;">*** Gracias por su confianza ***</div>
+                <div style="height:50px">.</div>
+            </body>
+            </html>
+        `);
         doc.close();
 
-        setTimeout(() => { win.focus(); win.print(); }, 500);
+        setTimeout(() => {
+            win.focus();
+            win.print();
+        }, 500);
     }
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
+        
+        if (!selectCliente.value) {
+            alert("Por favor seleccione un cliente.");
+            return;
+        }
+
+        btnGuardar.disabled = true;
+        btnGuardar.textContent = "Guardando...";
+
         const montoReal = inputMonto.value.replace(/\./g, "");
         const prestamo = { 
             id: Date.now().toString(), 
@@ -145,19 +235,34 @@
         
         const log = { ...prestamo, tipo: 'nuevo', hora: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) };
 
-        // Guardar en LocalStorage
-        let prestamos = JSON.parse(localStorage.getItem('prestamos')) || [];
-        prestamos.push(prestamo);
-        localStorage.setItem('prestamos', JSON.stringify(prestamos));
+        try {
+            // Guardar en 'mis_prestamos'
+            const prestamosActuales = JSON.parse(localStorage.getItem('mis_prestamos')) || [];
+            prestamosActuales.push(prestamo);
+            localStorage.setItem('mis_prestamos', JSON.stringify(prestamosActuales));
 
-        let historial = JSON.parse(localStorage.getItem('historial_impresiones')) || [];
-        historial.push(log);
-        localStorage.setItem('historial_impresiones', JSON.stringify(historial));
+            // Guardar en historial
+            const historialActual = JSON.parse(localStorage.getItem('historial_impresiones')) || [];
+            historialActual.push(log);
+            localStorage.setItem('historial_impresiones', JSON.stringify(historialActual));
 
-        imprimirNuevoPrestamo(prestamo);
-        form.reset();
-        calcular();
-        alert("✅ Préstamo guardado e impreso.");
+            imprimirNuevoPrestamo(prestamo);
+
+            form.reset();
+            txtBono.textContent = "$0";
+            txtEntregado.textContent = "$0";
+            txtCuota.textContent = "$0";
+            txtTotal.textContent = "$0";
+            
+            alert("✅ Préstamo guardado e impreso con éxito.");
+
+        } catch (error) {
+            console.error(error);
+            alert("Error al guardar.");
+        } finally {
+            btnGuardar.disabled = false;
+            btnGuardar.textContent = "Guardar e Imprimir";
+        }
     });
 
     window.onload = cargarClientes;
