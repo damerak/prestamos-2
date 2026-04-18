@@ -22,7 +22,6 @@
         body { background-color: var(--bg-color); color: var(--text-main); padding: 40px 20px; }
         .container { width: 100%; max-width: 1000px; margin: 0 auto; animation: fadeIn 0.6s ease; }
         
-        /* BOTÓN VOLVER */
         .btn-top-inicio {
             display: inline-flex;
             align-items: center;
@@ -63,7 +62,6 @@
         }
         .client-card:hover { border-color: var(--accent); }
 
-        /* CABECERA DEL CLIENTE */
         .client-header {
             display: flex;
             justify-content: space-between;
@@ -86,7 +84,6 @@
             color: var(--accent);
         }
 
-        /* CONTENIDO DESPLEGABLE */
         .client-content {
             display: none;
             margin-top: 20px;
@@ -148,14 +145,12 @@
 </div>
 
 <script>
-    // --- LÓGICA DE DATOS LOCALES ---
-    let clientes = JSON.parse(localStorage.getItem('mis_clientes')) || [
-        // Datos de ejemplo por si la lista está vacía
-        { id: "1", nombres: "Juan Pérez", cedula: "123456", celular: "3001234567", barrio: "Centro", ocupacion: "Comerciante", direccion: "Calle 10 #5-20", nota: "Cliente frecuente" }
-    ];
+    // --- LÓGICA DE DATOS LOCALES CORREGIDA ---
+    // Cambiado de 'mis_clientes' a 'clientes' para sincronizar con todo el sistema
+    let clientes = JSON.parse(localStorage.getItem('clientes')) || [];
 
     function guardarEnLocalStorage() {
-        localStorage.setItem('mis_clientes', JSON.stringify(clientes));
+        localStorage.setItem('clientes', JSON.stringify(clientes));
         renderizarClientes();
     }
 
@@ -181,7 +176,6 @@
             const card = document.createElement('div');
             card.className = 'client-card';
             card.onclick = (e) => {
-                // Evita que se cierre al hacer clic en botones o inputs
                 if (e.target.closest('.actions') || e.target.closest('.edit-fields') || e.target.closest('.note-fields')) return;
                 card.classList.toggle('active');
             };
@@ -252,6 +246,7 @@
             clientes[index].ocupacion = document.getElementById(`in-ocu-${id}`).value;
             clientes[index].direccion = document.getElementById(`in-dir-${id}`).value;
             guardarEnLocalStorage();
+            alert("Información actualizada");
         }
     }
 
@@ -260,6 +255,7 @@
         if (index !== -1) {
             clientes[index].nota = document.getElementById(`in-note-${id}`).value;
             guardarEnLocalStorage();
+            alert("Nota guardada");
         }
     }
 
@@ -271,12 +267,10 @@
     }
 
     window.enviarWA = function(telefono) { 
-        // Quita caracteres no numéricos y abre WhatsApp
         const num = telefono.replace(/\D/g, "");
         window.open(`https://wa.me/57${num}`, '_blank'); 
     }
 
-    // Eventos iniciales
     document.getElementById('buscador').addEventListener('input', renderizarClientes);
     window.onload = renderizarClientes;
 </script>
