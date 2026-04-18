@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestorio - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f111a;
+            --card-bg: #161b2b;
+            --accent: #6366f1;
+            --text-main: #ffffff;
+            --text-muted: #94a3b8;
+            --border: #1e293b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --history: #a855f7;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            min-height: 100vh;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            background: linear-gradient(90deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .date { color: var(--text-muted); font-size: 0.7rem; }
+
+        .section-title {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent);
+            margin: 8px 0 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::after {
+            content: "";
+            height: 1px;
+            flex-grow: 1;
+            background: var(--border);
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .menu-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            text-decoration: none;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s ease;
+            height: 60px;
+        }
+
+        .menu-card:active {
+            transform: scale(0.95);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .icon-box {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--accent);
+            width: 32px; 
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .icon-box .material-icons-round {
+            font-size: 18px;
+        }
+
+        .card-info h3 { 
+            font-size: 0.75rem; 
+            font-weight: 600; 
+            line-height: 1.1;
+        }
+        .card-info p { 
+            font-size: 0.6rem; 
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .card-recaudo .icon-box { color: var(--success); background: rgba(16, 185, 129, 0.1); }
+        .card-stats .icon-box { color: var(--warning); background: rgba(245, 158, 11, 0.1); }
+        .card-history .icon-box { color: var(--history); background: rgba(168, 85, 247, 0.1); }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-height: 700px) {
+            .menu-card { height: 55px; }
+            .section-title { margin: 5px 0 4px 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="top-bar">
+        <div class="logo">GESTORIO PRO</div>
+        <div class="date" id="current-date"></div>
+    </div>
+
+    <div class="section-title">Clientes</div>
+    <div class="menu-grid">
+        <a href="nuevo-cliente.html" class="menu-card">
+            <div class="icon-box"><span class="material-icons-round">person_add</span></div>
+            <div class="card-info">
+                <h3>Nuevo</h3>
+                <p>Registrar</p>
+            </div>
+        </a>
+        <a href="clientes.html" class="menu-card">
+            <div class="icon-box"><span class="material-icons-round">group</span></div>
+            <div class="card-info">
+                <h3>Clientes</h3>
+                <p>Ver/Editar</p>
+            </div>
+        </a>
+    </div>
+
+    <div class="section-title">Gestión</div>
+    <div class="menu-grid">
+        <a href="nuevo-prestamo.html" class="menu-card">
+            <div class="icon-box"><span class="material-icons-round">add_chart</span></div>
+            <div class="card-info">
+                <h3>Nuevo Préstamo</h3>
+                <p>Desembolsar</p>
+            </div>
+        </a>
+        <a href="prestamos.html" class="menu-card">
+            <div class="icon-box"><span class="material-icons-round">account_balance_wallet</span></div>
+            <div class="card-info">
+                <h3>Préstamos</h3>
+                <p>Abonos y saldos</p>
+            </div>
+        </a>
+        <a href="cobros.html" class="menu-card card-recaudo">
+            <div class="icon-box"><span class="material-icons-round">request_quote</span></div>
+            <div class="card-info">
+                <h3>Cobros</h3>
+                <p>Ruta de hoy</p>
+            </div>
+        </a>
+        <a href="historial.html" class="menu-card card-history">
+            <div class="icon-box"><span class="material-icons-round">history</span></div>
+            <div class="card-info">
+                <h3>Historial</h3>
+                <p>Finalizados</p>
+            </div>
+        </a>
+    </div>
+
+    <div class="section-title">Análisis y Ajustes</div>
+    <div class="menu-grid">
+        <a href="reimpresion.html" class="menu-card">
+            <div class="icon-box"><span class="material-icons-round">history_edu</span></div>
+            <div class="card-info">
+                <h3>Reimprimir</h3>
+                <p>Ticket hoy</p>
+            </div>
+        </a>
+        <a href="estadisticas.html" class="menu-card card-stats">
+            <div class="icon-box"><span class="material-icons-round">insights</span></div>
+            <div class="card-info">
+                <h3>Estadística</h3>
+                <p>Utilidad</p>
+            </div>
+        </a>
+        <a href="empresa.html" class="menu-card">
+            <div class="icon-box"><span class="material-icons-round">business</span></div>
+            <div class="card-info">
+                <h3>Empresa</h3>
+                <p>Datos/NIT</p>
+            </div>
+        </a>
+        <a href="configuracion-impresion.html" class="menu-card">
+            <div class="icon-box"><span class="material-icons-round">print</span></div>
+            <div class="card-info">
+                <h3>Impresora</h3>
+                <p>Formato</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<script>
+    const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+    document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-ES', options);
+</script>
+
+</body>
+</html>

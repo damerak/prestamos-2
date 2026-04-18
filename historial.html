@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial de Préstamos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-color: #121420; --card-bg: #1b1f2d; --input-bg: #24293a; --text-color: #e0e0e0; --accent-color: #4ade80; --border-color: #2e344a; --danger: #ef4444; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); padding: 40px 20px; }
+        .container { width: 100%; max-width: 1000px; margin: 0 auto; animation: fadeIn 0.6s ease; }
+        .btn-regresar { display: inline-block; margin-bottom: 20px; color: #5d5fef; text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: 0.3s; }
+        .btn-regresar:hover { color: white; transform: translateX(-5px); }
+        h2 { font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px; color: #fff; font-weight: 600; text-align: center; }
+        .header-actions { display: flex; gap: 15px; margin-bottom: 30px; }
+        #buscador { flex: 1; padding: 15px 20px; background-color: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; color: white; outline: none; }
+        .btn-vaciar { padding: 10px 20px; background-color: var(--danger); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .loan-card { background-color: var(--card-bg); border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); overflow: hidden; }
+        .loan-header { padding: 20px; background-color: #24293a; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .client-name { font-weight: 600; color: var(--accent-color); font-size: 1.1rem; }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; background: rgba(74, 222, 128, 0.1); color: var(--accent-color); border: 1px solid var(--accent-color); }
+        .loan-content { display: none; padding: 20px; border-top: 1px solid var(--border-color); }
+        .loan-card.active .loan-content { display: block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        th { text-align: left; padding: 12px; color: #8b8ea1; border-bottom: 2px solid var(--border-color); text-transform: uppercase; font-size: 0.7rem; }
+        td { padding: 12px; border-bottom: 1px solid var(--border-color); }
+        .monto-pagado { color: var(--accent-color); font-weight: 600; }
+        .badge-tipo { padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
+        .tipo-abono { background: #3b82f6; color: white; }
+        .tipo-final { background: var(--accent-color); color: #121420; font-weight: bold; }
+        .empty-state { text-align: center; padding: 50px; color: #8b8ea1; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="index.html" class="btn-regresar">← Volver al Inicio</a>
+    <h2>Historial de Préstamos Finalizados</h2>
+    <div class="header-actions">
+        <input type="text" id="buscador" placeholder="Buscar por cliente o fecha..." oninput="renderizarHistorial()">
+        <button class="btn-vaciar" onclick="vaciarHistorial()">Vaciar Historial</button>
+    </div>
+    <div id="listaHistorial"><div class="empty-state">Cargando...</div></div>
+</div>
+
+<script>
+    function vaciarHistorial() {
+        if (confirm("¿Vaciar historial?")) {
+            localStorage.setItem('historial_impresiones', JSON.stringify([]));
+            renderizarHistorial();
+        }
+    }
+
+    function procesarDatos() {
+        const historialPagos = JSON.parse(localStorage.getItem('historial_impresiones')) || [];
+        const clientes = JSON.parse(localStorage.getItem('clientes')) || [];
+        const pagosPorCliente = historialPagos.reduce((acc, pago) => {
+            if (!acc[pago.cliente]) acc[pago.cliente] = [];
+            acc[pago.cliente].push(pago); return acc;
+        }, {});
+
+        let prestamosFinalizados = [];
+        for (const cliente in pagosPorCliente) {
+            let pagos = pagosPorCliente[cliente];
+            let grupoActual = [];
+            pagos.forEach(pago => {
+                grupoActual.push(pago);
+                if (parseFloat(pago.saldo) === 0) {
+                    const dc = clientes.find(c => c.nombres === cliente) || { cedula: "N/A", barrio: "N/A" };
+                    prestamosFinalizados.push({ cliente: cliente, cedula: dc.cedula, barrio: dc.barrio, fechaFinalizacion: pago.fecha, movimientos: [...grupoActual] });
+                    grupoActual = [];
+                }
+            });
+        }
+        return prestamosFinalizados.reverse();
+    }
+
+    function renderizarHistorial() {
+        const contenedor = document.getElementById('listaHistorial');
+        const filtro = document.getElementById('buscador').value.toLowerCase();
+        const prestamos = procesarDatos();
+        contenedor.innerHTML = "";
+        if (prestamos.length === 0) { contenedor.innerHTML = `<div class="empty-state">No hay registros.</div>`; return; }
+        const filtrados = prestamos.filter(p => p.cliente.toLowerCase().includes(filtro) || p.fechaFinalizacion.includes(filtro));
+        filtrados.forEach(p => {
+            const card = document.createElement('div'); card.className = 'loan-card';
+            card.innerHTML = `<div class="loan-header" onclick="this.parentElement.classList.toggle('active')"><div class="client-info"><span class="client-name">${p.cliente}</span><br><span style="font-size:0.8rem; color:#8b8ea1">Finalizado: ${p.fechaFinalizacion}</span></div><div class="status-badge">PAGADO TOTAL</div></div>
+                <div class="loan-content"><div style="margin-bottom: 15px; font-size: 0.85rem; display: grid; grid-template-columns: 1fr 1fr;"><div><strong>Cédula:</strong> ${p.cedula}</div><div><strong>Barrio:</strong> ${p.barrio}</div></div>
+                <table><thead><tr><th>Fecha / Hora</th><th>Tipo</th><th>Monto Pagado</th><th>Saldo</th></tr></thead><tbody>${p.movimientos.map(m => `<tr><td>${m.fecha}<br><small style="color:#8b8ea1">${m.hora}</small></td><td><span class="badge-tipo ${m.tipo === 'cancelacion' ? 'tipo-final' : 'tipo-abono'}">${m.tipo.toUpperCase()}</span></td><td class="monto-pagado">${formatear(m.monto)}</td><td>${formatear(m.saldo)}</td></tr>`).join('')}</tbody></table></div>`;
+            contenedor.appendChild(card);
+        });
+    }
+
+    function formatear(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); }
+    window.onload = renderizarHistorial;
+</script>
+</body>
+</html>

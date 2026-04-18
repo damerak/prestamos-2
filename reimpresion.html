@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reimpresión de Recibos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-color: #121420; --card-bg: #1b1f2d; --input-bg: #24293a; --text-color: #e0e0e0; --accent-color: #5d5fef; --border-color: #2e344a; --nuevo-color: #b18cf0; --abono-color: #4ade80; --cancelado-color: #f43f5e; --danger: #ef4444; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); padding: 40px 20px; }
+        .container { width: 100%; max-width: 900px; margin: 0 auto; animation: fadeIn 0.6s ease; }
+        .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .btn-regresar { color: var(--accent-color); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: 0.3s; }
+        .btn-regresar:hover { color: white; transform: translateX(-5px); }
+        .btn-reset-log { background: none; border: 1px solid var(--danger); color: var(--danger); padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+        h2 { font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px; color: #8b8ea1; font-weight: 600; }
+        .dia-tag { background: var(--input-bg); padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; color: var(--accent-color); margin-bottom: 30px; display: inline-block; border: 1px solid var(--border-color); }
+        .group-section { margin-bottom: 40px; }
+        .group-title { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
+        .recibo-card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; transition: 0.3s; }
+        .recibo-card:hover { border-color: var(--accent-color); transform: translateX(5px); }
+        .recibo-info { display: flex; flex-direction: column; gap: 3px; }
+        .r-cliente { font-weight: 600; font-size: 1rem; color: white; }
+        .r-detalle { font-size: 0.8rem; color: #7a829a; }
+        .r-monto { font-weight: 600; font-size: 1.1rem; }
+        .btn-reimprimir { padding: 10px 18px; background: var(--accent-color); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 700; transition: 0.3s; }
+        #iframeImpresion { position: absolute; width: 0; height: 0; border: none; visibility: hidden; }
+        .tipo-nuevo { color: var(--nuevo-color); } .tipo-abono { color: var(--abono-color); } .tipo-cancelado { color: var(--cancelado-color); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="top-nav"><a href="index.html" class="btn-regresar">← Volver al Inicio</a><button class="btn-reset-log" onclick="reiniciarHistorial()">Limpiar Historial de Hoy</button></div>
+    <h2>Reimpresión de Facturas</h2>
+    <div class="dia-tag" id="fechaHoy">Recibos del Día: --/--/----</div>
+    <div class="group-section"><div class="group-title tipo-nuevo">● Préstamos Creados</div><div id="listaNuevos"></div></div>
+    <div class="group-section"><div class="group-title tipo-abono">● Abonos y Cobros</div><div id="listaAbonos"></div></div>
+    <div class="group-section"><div class="group-title tipo-cancelado">● Cancelaciones Totales</div><div id="listaCancelaciones"></div></div>
+</div>
+<iframe id="iframeImpresion"></iframe>
+
+<script>
+    const hoy = new Date().toLocaleDateString();
+    document.getElementById('fechaHoy').textContent = `Recibos del Día: ${hoy}`;
+
+    function renderizarHistorial() {
+        const dN = document.getElementById('listaNuevos'); dN.innerHTML = "";
+        const dA = document.getElementById('listaAbonos'); dA.innerHTML = "";
+        const dC = document.getElementById('listaCancelaciones'); dC.innerHTML = "";
+        
+        const registros = (JSON.parse(localStorage.getItem('historial_impresiones')) || []).filter(i => i.fecha === hoy);
+        registros.sort((a, b) => b.hora.localeCompare(a.hora));
+
+        registros.forEach(item => {
+            const card = document.createElement('div'); card.className = 'recibo-card';
+            card.innerHTML = `<div class="recibo-info"><span class="r-cliente">${item.cliente.toUpperCase()}</span><span class="r-detalle">${item.hora} | ${item.tipo === 'nuevo' ? 'Apertura' : 'Pago'}</span></div>
+                <div style="display:flex; align-items:center; gap:20px;"><span class="r-monto ${getClase(item.tipo)}">${formatear(item.monto)}</span><button class="btn-reimprimir" onclick='reimprimir(${JSON.stringify(item)})'>IMPRIMIR</button></div>`;
+            if (item.tipo === 'nuevo') dN.appendChild(card);
+            else if (item.tipo === 'abono') dA.appendChild(card);
+            else dC.appendChild(card);
+        });
+    }
+
+    function reiniciarHistorial() {
+        if(confirm("¿Limpiar historial de hoy?")) {
+            let historial = JSON.parse(localStorage.getItem('historial_impresiones')) || [];
+            localStorage.setItem('historial_impresiones', JSON.stringify(historial.filter(i => i.fecha !== hoy)));
+            renderizarHistorial();
+        }
+    }
+
+    function reimprimir(item) {
+        const emp = JSON.parse(localStorage.getItem('datosEmpresa')) || { nombre: "MI NEGOCIO", telefono: "000", ciudad: "CIUDAD" };
+        const cf = JSON.parse(localStorage.getItem('ticketConfig')) || { width: 58, marginTop: 10, marginSide: 5, fontSize: 12, separator: "--------------------------------", bold: false };
+        const iframe = document.getElementById('iframeImpresion').contentWindow;
+        const doc = iframe.document;
+        let body = item.tipo === 'nuevo' ? `<div class="bold">** REIMPRESIÓN **</div><div class="bold">NUEVO PRÉSTAMO</div><div class="sep">${cf.separator}</div><div style="text-align:left">FECHA: ${item.fecha}<br>CLIENTE: ${item.cliente.toUpperCase()}</div><div class="sep">${cf.separator}</div><div class="row"><span>MONTO:</span><span>${formatear(item.monto)}</span></div><div class="row"><span>CUOTAS:</span><span>${item.cuotas || '--'}</span></div><div class="sep">${cf.separator}</div><div class="box"><div class="bold">TOTAL: ${formatear(item.total || item.saldo)}</div></div>` :
+            `<div class="bold">** REIMPRESIÓN **</div><div class="bold">RECIBO DE CAJA</div><div class="sep">${cf.separator}</div><div style="text-align:left">FECHA: ${item.fecha}<br>HORA: ${item.hora}<br>CLIENTE: ${item.cliente.toUpperCase()}</div><div class="sep">${cf.separator}</div><div class="box bold">PAGO: ${formatear(item.monto)}</div><div class="bold">SALDO: ${formatear(item.saldo)}</div>`;
+        doc.open();
+        doc.write(`<html><head><style>@page { margin: 0; size: auto; } body { width: 48mm; margin: 0 auto; padding: ${cf.marginTop}px 0; text-align: center; color: #000; font-family: 'Courier New', monospace; font-size: ${cf.fontSize}px; line-height: 1.2; } .bold { font-weight: bold; } .sep { margin: 5px 0; overflow: hidden; white-space: nowrap; } .box { border: 1px solid #000; padding: 5px; margin: 8px 0; } .row { display: flex; justify-content: space-between; }</style></head>
+            <body><div class="bold">${emp.nombre.toUpperCase()}</div><div class="sep">${cf.separator}</div>${body}<div class="sep">${cf.separator}</div><div style="margin-top:10px;">*** Gracias ***</div></body></html>`);
+        doc.close();
+        setTimeout(() => { iframe.focus(); iframe.print(); }, 500);
+    }
+
+    function getClase(t) { return t === 'nuevo' ? 'tipo-nuevo' : (t === 'abono' ? 'tipo-abono' : 'tipo-cancelado'); }
+    function formatear(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+    window.onload = renderizarHistorial;
+</script>
+</body>
+</html>

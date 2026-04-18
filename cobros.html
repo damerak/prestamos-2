@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cobros Diarios</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-color: #121420; --card-bg: #1b1f2d; --input-bg: #24293a; --text-color: #e0e0e0; --accent-color: #5d5fef; --border-color: #2e344a; --danger: #ef4444; --success: #4ade80; --warning: #ffcc00; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); padding: 40px 20px; }
+        .container { width: 100%; max-width: 1000px; margin: 0 auto; animation: fadeIn 0.6s ease; }
+        .btn-regresar { display: inline-block; margin-bottom: 20px; color: var(--accent-color); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: 0.3s; }
+        .btn-regresar:hover { color: white; transform: translateX(-5px); }
+        h2 { font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px; color: #8b8ea1; font-weight: 600; }
+        #buscador { width: 100%; padding: 15px 20px; background-color: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; color: white; outline: none; margin-bottom: 30px; }
+        .barrio-card { background-color: var(--card-bg); border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); }
+        .barrio-header { padding: 20px; background-color: #24293a; cursor: pointer; display: flex; justify-content: space-between; font-weight: 600; color: var(--accent-color); border-radius: 12px; }
+        .barrio-content { display: none; padding: 15px; flex-direction: column; gap: 15px; }
+        .barrio-card.active .barrio-content { display: flex; }
+        .cobro-item { background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 20px; }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; flex: 1; }
+        .label { font-size: 0.7rem; color: #7a829a; text-transform: uppercase; }
+        .value { font-size: 0.95rem; font-weight: 500; }
+        .mora-tag { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .mora-red { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .mora-yellow { background: rgba(255, 204, 0, 0.2); color: var(--warning); }
+        .btn-cobrar { padding: 12px 25px; background-color: var(--success); color: #121420; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .empty-state { text-align: center; padding: 50px; color: #7a829a; }
+        #iframeImpresion { position: absolute; width: 0; height: 0; border: none; visibility: hidden; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="index.html" class="btn-regresar">← VOLVER AL INICIO</a>
+    <h2>Cobros Pendientes del Día</h2>
+    <input type="text" id="buscador" placeholder="Buscar cliente por nombre...">
+    <div id="listaCobros"></div>
+</div>
+<iframe id="iframeImpresion"></iframe>
+
+<script>
+    let prestamos = [];
+    let clientes = [];
+
+    function cargarDatos() {
+        clientes = JSON.parse(localStorage.getItem('clientes')) || [];
+        prestamos = JSON.parse(localStorage.getItem('prestamos')) || [];
+        renderizarCobros();
+    }
+
+    function calcularDiasTranscurridos(fecha) {
+        if (!fecha) return 0;
+        const partes = fecha.split('/');
+        const inicio = new Date(partes[2], partes[1] - 1, partes[0]);
+        const hoy = new Date(); hoy.setHours(0,0,0,0);
+        return Math.floor((hoy - inicio) / (1000 * 60 * 60 * 24));
+    }
+
+    function renderizarCobros() {
+        const contenedor = document.getElementById('listaCobros'); 
+        contenedor.innerHTML = "";
+        const filtro = document.getElementById('buscador').value.toLowerCase();
+        let datos = prestamos.map(p => {
+            const cli = clientes.find(c => c.nombres === p.cliente) || { barrio: "Sin Barrio" };
+            const valorCuota = parseNum(p.total) / p.cuotas;
+            const diasDeuda = calcularDiasTranscurridos(p.fecha);
+            const pendientes = diasDeuda - (p.abonosRealizados || 0);
+            if (pendientes <= 0) return null;
+            return { ...p, barrio: cli.barrio, valorCuota, pendientes };
+        }).filter(item => item !== null);
+
+        if (filtro) datos = datos.filter(d => d.cliente.toLowerCase().includes(filtro));
+        const grupos = datos.reduce((acc, curr) => { if (!acc[curr.barrio]) acc[curr.barrio] = []; acc[curr.barrio].push(curr); return acc; }, {});
+        if (Object.keys(grupos).length === 0) { contenedor.innerHTML = `<div class="empty-state">🎉 ¡Excelente! Sin cobros pendientes.</div>`; return; }
+        
+        for (const barrio in grupos) {
+            const div = document.createElement('div'); div.className = 'barrio-card active';
+            div.innerHTML = `<div class="barrio-header"><span>📍 ${barrio.toUpperCase()}</span><span>${grupos[barrio].length} Cobros</span></div>
+                <div class="barrio-content">${grupos[barrio].map(p => `
+                    <div class="cobro-item">
+                        <div class="info-grid">
+                            <div><span class="label">Cliente</span><br><span class="value">${p.cliente}</span></div>
+                            <div><span class="label">Mora</span><br><span class="mora-tag ${p.pendientes > 1 ? 'mora-red' : 'mora-yellow'}">${p.pendientes} días</span></div>
+                            <div><span class="label">Cobrar</span><br><span class="value" style="color:var(--success)">${formatear(p.valorCuota * p.pendientes)}</span></div>
+                        </div>
+                        <button class="btn-cobrar" onclick="registrarCobro('${p.id}', ${p.valorCuota}, ${p.pendientes})">COBRAR</button>
+                    </div>`).join('')}</div>`;
+            contenedor.appendChild(div);
+        }
+    }
+
+    function registrarCobro(id, cuota, cant) {
+        let p = prestamos.find(x => x.id === id);
+        if (!p) return;
+        let totalAbono = cuota * cant;
+        let nuevoSaldo = p.saldo - totalAbono;
+        p.abonosRealizados = (p.abonosRealizados || 0) + cant;
+        p.saldo = nuevoSaldo;
+
+        const log = { tipo: nuevoSaldo <= 0 ? 'cancelacion' : 'abono', cliente: p.cliente, monto: totalAbono, saldo: nuevoSaldo, fecha: new Date().toLocaleDateString(), hora: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) };
+        
+        let historial = JSON.parse(localStorage.getItem('historial_impresiones')) || [];
+        historial.push(log);
+        localStorage.setItem('historial_impresiones', JSON.stringify(historial));
+
+        if (nuevoSaldo <= 0) prestamos = prestamos.filter(x => x.id !== id);
+        localStorage.setItem('prestamos', JSON.stringify(prestamos));
+        
+        generarReciboCobro(p, totalAbono, nuevoSaldo);
+        renderizarCobros();
+    }
+
+    function generarReciboCobro(p, abono, saldoFinal) {
+        const datosEmpresa = JSON.parse(localStorage.getItem('datosEmpresa')) || { nombre: "MI NEGOCIO", telefono: "000", ciudad: "BOGOTÁ" };
+        const ticketConfig = JSON.parse(localStorage.getItem('ticketConfig')) || { width: 58, marginTop: 10, marginSide: 5, fontSize: 12, separator: "--------------------------------" };
+        const iframe = document.getElementById('iframeImpresion').contentWindow;
+        const doc = iframe.document;
+        doc.open();
+        doc.write(`<html><head><style>@page { margin: 0; size: auto; } body { width: 48mm; margin: 0 auto; padding: ${ticketConfig.marginTop}px 0; font-family: 'Courier New', monospace; font-size: ${ticketConfig.fontSize}px; text-align: center; color: #000; line-height: 1.2; } .bold { font-weight: bold; } .sep { margin: 5px 0; overflow: hidden; white-space: nowrap; } .box { border: 1px solid #000; padding: 5px; margin: 8px 0; }</style></head>
+            <body><div class="bold">${datosEmpresa.nombre.toUpperCase()}</div><div>TEL: ${datosEmpresa.telefono}</div><div>${datosEmpresa.ciudad.toUpperCase()}</div><div class="sep">${ticketConfig.separator}</div><div class="bold">RECIBO DE COBRO</div><div class="sep">${ticketConfig.separator}</div><div style="text-align:left">FECHA: ${new Date().toLocaleDateString()}<br>CLIENTE: ${p.cliente.toUpperCase()}</div><div class="sep">${ticketConfig.separator}</div><div class="box bold">PAGO: ${formatear(abono)}</div><div class="bold">SALDO: ${formatear(saldoFinal)}</div><div class="sep">${ticketConfig.separator}</div><div style="margin-top:10px;">¡Gracias!</div></body></html>`);
+        doc.close();
+        setTimeout(() => { iframe.focus(); iframe.print(); }, 500);
+    }
+
+    function parseNum(str) { if (!str) return 0; return parseFloat(str.toString().replace(/\./g, "").replace(/[^0-9.-]+/g,"")) || 0; }
+    function formatear(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); }
+    document.getElementById('buscador').addEventListener('input', renderizarCobros);
+    window.onload = cargarDatos;
+</script>
+</body>
+</html>

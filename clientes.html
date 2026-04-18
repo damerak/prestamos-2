@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestorio - Listado de Clientes</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #121420;
+            --card-bg: #1b1f2d;
+            --input-bg: #24293a;
+            --text-main: #e0e0e0;
+            --text-dim: #8b8ea1;
+            --accent: #5d5fef;
+            --danger: #ef4444;
+            --wa-color: #25d366;
+            --border: #2e344a;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 40px 20px; }
+        .container { width: 100%; max-width: 1000px; margin: 0 auto; animation: fadeIn 0.6s ease; }
+        .btn-top-inicio { display: inline-flex; align-items: center; background: var(--accent); color: white; padding: 10px 20px; border-radius: 10px; text-decoration: none; font-weight: 600; margin-bottom: 30px; transition: 0.3s; }
+        .btn-top-inicio:hover { opacity: 0.8; transform: translateX(-5px); }
+        header { display: flex; flex-direction: column; gap: 20px; margin-bottom: 40px; }
+        h1 { font-size: 1.5rem; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); }
+        .search-box { display: flex; align-items: center; background: var(--card-bg); padding: 10px 20px; border-radius: 12px; border: 1px solid var(--border); }
+        .search-box input { background: transparent; border: none; color: white; padding: 10px; width: 100%; outline: none; font-size: 1rem; }
+        .search-box span { color: var(--text-dim); }
+        .client-list { display: flex; flex-direction: column; gap: 15px; }
+        .client-card { background: var(--card-bg); border-radius: 16px; padding: 20px; border: 1px solid var(--border); transition: 0.3s ease; cursor: pointer; }
+        .client-card:hover { border-color: var(--accent); }
+        .client-header { display: flex; justify-content: space-between; align-items: center; }
+        .client-header h2 { font-size: 1.1rem; color: white; display: flex; align-items: center; gap: 12px; margin: 0; }
+        .expand-icon { color: var(--text-dim); transition: 0.3s; }
+        .client-card.active .expand-icon { transform: rotate(180deg); color: var(--accent); }
+        .client-content { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); animation: slideDown 0.3s ease; }
+        .client-card.active .client-content { display: block; }
+        .note-display { font-size: 0.85rem; color: #ffcc00; font-style: italic; margin-bottom: 15px; padding-left: 10px; border-left: 2px solid #ffcc00; }
+        .details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .detail-item { display: flex; flex-direction: column; }
+        .detail-item label { font-size: 0.7rem; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1px; }
+        .detail-item span { font-size: 0.9rem; margin-top: 3px; }
+        .actions { display: flex; gap: 15px; padding-top: 15px; border-top: 1px dashed var(--border); flex-wrap: wrap; }
+        .action-btn { display: flex; flex-direction: column; align-items: center; background: none; border: none; cursor: pointer; color: var(--text-dim); transition: 0.3s; min-width: 60px; }
+        .action-btn span.material-icons-round { background: var(--input-bg); padding: 12px; border-radius: 12px; font-size: 24px; margin-bottom: 5px; }
+        .action-btn small { font-size: 0.65rem; text-transform: uppercase; font-weight: 600; }
+        .btn-edit:hover { color: var(--accent); }
+        .btn-note:hover { color: #ffcc00; }
+        .btn-wa:hover { color: var(--wa-color); }
+        .btn-del:hover { color: var(--danger); }
+        .edit-fields, .note-fields { display: none; margin-top: 20px; padding: 15px; background: #121420; border-radius: 10px; border: 1px solid var(--border); }
+        input.edit-input { width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: white; margin-bottom: 10px; }
+        .btn-save { padding: 10px 20px; border: none; border-radius: 8px; background: var(--accent); color: white; cursor: pointer; font-weight: 600; width: 100%; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="index.html" class="btn-top-inicio"><span class="material-icons-round" style="margin-right:8px">home</span> VOLVER AL INICIO</a>
+    <header>
+        <h1>Listado de Clientes</h1>
+        <div class="search-box">
+            <span class="material-icons-round">search</span>
+            <input type="text" id="buscador" placeholder="Buscar por nombre o cédula...">
+        </div>
+    </header>
+    <div class="client-list" id="clientList"></div>
+</div>
+
+<script>
+    let clientes = [];
+
+    function obtenerClientes() {
+        clientes = JSON.parse(localStorage.getItem('clientes')) || [];
+        renderizarClientes();
+    }
+
+    function renderizarClientes() {
+        const lista = document.getElementById('clientList');
+        lista.innerHTML = "";
+        const filtro = document.getElementById('buscador').value.toLowerCase();
+        
+        clientes.sort((a, b) => a.nombres.localeCompare(b.nombres));
+
+        const filtrados = clientes.filter(c => 
+            c.nombres.toLowerCase().includes(filtro) || 
+            c.cedula.toString().includes(filtro)
+        );
+
+        filtrados.forEach(c => {
+            const card = document.createElement('div');
+            card.className = 'client-card';
+            card.onclick = (e) => {
+                if (e.target.closest('.actions') || e.target.closest('.edit-fields') || e.target.closest('.note-fields')) return;
+                card.classList.toggle('active');
+            };
+
+            card.innerHTML = `
+                <div class="client-header">
+                    <h2><span class="material-icons-round" style="color:var(--accent)">person</span> ${c.nombres}</h2>
+                    <span class="material-icons-round expand-icon">expand_more</span>
+                </div>
+                <div class="client-content">
+                    ${c.nota ? `<div class="note-display">Nota: ${c.nota}</div>` : ''}
+                    <div class="details-grid">
+                        <div class="detail-item"><label>Cédula</label><span>${c.cedula}</span></div>
+                        <div class="detail-item"><label>Celular</label><span>${c.celular}</span></div>
+                        <div class="detail-item"><label>Barrio</label><span>${c.barrio}</span></div>
+                        <div class="detail-item"><label>Ocupación</label><span>${c.ocupacion}</span></div>
+                        <div class="detail-item"><label>Dirección</label><span>${c.direccion}</span></div>
+                    </div>
+                    <div class="actions">
+                        <button class="action-btn btn-edit" onclick="toggleEdit('${c.id}')"><span class="material-icons-round">edit</span><small>Editar</small></button>
+                        <button class="action-btn btn-note" onclick="toggleNote('${c.id}')"><span class="material-icons-round">sticky_note_2</span><small>Nota</small></button>
+                        <button class="action-btn btn-wa" onclick="enviarWA('${c.celular}')"><span class="material-icons-round">chat</span><small>WA</small></button>
+                        <button class="action-btn btn-del" onclick="eliminarCliente('${c.id}')"><span class="material-icons-round">delete_forever</span><small>Eliminar</small></button>
+                    </div>
+                    <div class="edit-fields" id="edit-${c.id}">
+                        <label style="font-size:0.7rem; color:var(--accent)">EDITAR INFORMACIÓN</label>
+                        <input type="text" class="edit-input" id="in-nom-${c.id}" value="${c.nombres}">
+                        <input type="text" class="edit-input" id="in-cel-${c.id}" value="${c.celular}">
+                        <input type="text" class="edit-input" id="in-bar-${c.id}" value="${c.barrio}">
+                        <input type="text" class="edit-input" id="in-ocu-${c.id}" value="${c.ocupacion}">
+                        <input type="text" class="edit-input" id="in-dir-${c.id}" value="${c.direccion}">
+                        <button class="btn-save" onclick="guardarEdicion('${c.id}')">Guardar Cambios</button>
+                    </div>
+                    <div class="note-fields" id="note-box-${c.id}">
+                        <label style="font-size:0.7rem; color:#ffcc00">NOTA PRIVADA</label>
+                        <input type="text" class="edit-input" id="in-note-${c.id}" placeholder="Escribe una nota..." value="${c.nota || ''}">
+                        <button class="btn-save" style="background:#ffcc00; color:#000" onclick="guardarNota('${c.id}')">Guardar Nota</button>
+                    </div>
+                </div>
+            `;
+            lista.appendChild(card);
+        });
+    }
+
+    window.toggleEdit = function(id) { 
+        const div = document.getElementById(`edit-${id}`); 
+        div.style.display = div.style.display === 'block' ? 'none' : 'block'; 
+    }
+    
+    window.toggleNote = function(id) { 
+        const div = document.getElementById(`note-box-${id}`); 
+        div.style.display = div.style.display === 'block' ? 'none' : 'block'; 
+    }
+
+    window.guardarEdicion = function(id) {
+        let index = clientes.findIndex(c => c.id === id);
+        if(index !== -1) {
+            clientes[index].nombres = document.getElementById(`in-nom-${id}`).value;
+            clientes[index].celular = document.getElementById(`in-cel-${id}`).value;
+            clientes[index].barrio = document.getElementById(`in-bar-${id}`).value;
+            clientes[index].ocupacion = document.getElementById(`in-ocu-${id}`).value;
+            clientes[index].direccion = document.getElementById(`in-dir-${id}`).value;
+            localStorage.setItem('clientes', JSON.stringify(clientes));
+            obtenerClientes();
+        }
+    }
+
+    window.guardarNota = function(id) {
+        let index = clientes.findIndex(c => c.id === id);
+        if(index !== -1) {
+            clientes[index].nota = document.getElementById(`in-note-${id}`).value;
+            localStorage.setItem('clientes', JSON.stringify(clientes));
+            obtenerClientes();
+        }
+    }
+
+    window.eliminarCliente = function(id) {
+        if(confirm("¿Eliminar cliente?")) {
+            clientes = clientes.filter(c => c.id !== id);
+            localStorage.setItem('clientes', JSON.stringify(clientes));
+            obtenerClientes();
+        }
+    }
+
+    window.enviarWA = function(telefono) { window.open(`https://wa.me/57${telefono.replace(/\D/g, "")}`, '_blank'); }
+
+    document.getElementById('buscador').addEventListener('input', renderizarClientes);
+    window.onload = obtenerClientes;
+</script>
+</body>
+</html>

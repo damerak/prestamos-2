@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datos Empresa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-color: #0f121d; --card-bg: rgba(23, 28, 41, 0.8); --accent-color: #5b61f1; --text-color: #ffffff; }
+        body { background-color: var(--bg-color); font-family: 'Montserrat', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: var(--text-color); }
+        .container { background: var(--card-bg); padding: 40px; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        .btn-regresar { display: inline-block; margin-bottom: 15px; color: #8b92ff; text-decoration: none; font-size: 0.85rem; font-weight: 600; }
+        .btn-regresar:hover { text-decoration: underline; }
+        h2 { font-weight: 800; font-size: 1.2rem; margin-bottom: 25px; color: #8b92ff; text-transform: uppercase; letter-spacing: 2px; }
+        input { width: 100%; padding: 15px; background: #1c2233; border: 2px solid transparent; border-radius: 10px; color: white; margin-bottom: 20px; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--accent-color); }
+        button { width: 100%; padding: 16px; background: linear-gradient(135deg, #5b61f1 0%, #8b5cf6 100%); border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+        button:hover { transform: scale(1.02); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="btn-regresar">← VOLVER AL INICIO</a>
+        <h2>Datos Empresa</h2>
+        <input type="text" id="nombreEmpresa" placeholder="NOMBRE DEL NEGOCIO">
+        <input type="text" id="telefonoEmpresa" placeholder="TELÉFONO">
+        <input type="text" id="ciudadEmpresa" placeholder="CIUDAD">
+        <button id="btnGuardar">Actualizar Datos</button>
+    </div>
+
+    <script>
+        window.onload = () => {
+            const saved = JSON.parse(localStorage.getItem('datosEmpresa'));
+            if(saved) {
+                document.getElementById('nombreEmpresa').value = saved.nombre;
+                document.getElementById('telefonoEmpresa').value = saved.telefono;
+                document.getElementById('ciudadEmpresa').value = saved.ciudad;
+            }
+        };
+
+        document.getElementById('btnGuardar').addEventListener('click', () => {
+            const data = { 
+                nombre: document.getElementById('nombreEmpresa').value, 
+                telefono: document.getElementById('telefonoEmpresa').value, 
+                ciudad: document.getElementById('ciudadEmpresa').value 
+            };
+            localStorage.setItem('datosEmpresa', JSON.stringify(data));
+            alert("Datos actualizados correctamente.");
+        });
+    </script>
+</body>
+</html>
