@@ -4,80 +4,286 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configurador de Tickets - Impresiones</title>
+    <!-- Agregadas fuentes e iconos para consistencia con el resto del sistema -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <style>
-        :root { --bg-color: #eef2f7; --panel-color: #ffffff; --primary: #5d5fef; --accent: #5d5fef; }
-        body { font-family: 'Poppins', sans-serif; background-color: var(--bg-color); display: flex; padding: 20px; gap: 25px; color: #333; }
-        .btn-top-inicio { display: inline-flex; align-items: center; background: var(--primary); color: white; padding: 10px 20px; border-radius: 10px; text-decoration: none; font-weight: 600; margin-bottom: 20px; transition: 0.3s; border: none; cursor: pointer; }
-        .btn-top-inicio:hover { opacity: 0.9; transform: translateX(-5px); box-shadow: 0 4px 12px rgba(93, 95, 239, 0.3); }
-        .controls { width: 380px; background: var(--panel-color); padding: 25px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); height: fit-content; max-height: 90vh; overflow-y: auto; }
+        :root {
+            --bg-color: #eef2f7;
+            --panel-color: #ffffff;
+            --primary: #5d5fef; /* Color ajustado para match con el sistema */
+            --accent: #5d5fef;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif; /* Cambio a Poppins */
+            background-color: var(--bg-color);
+            display: flex;
+            padding: 20px;
+            gap: 25px;
+            color: #333;
+        }
+
+        /* BOTÓN VOLVER (Mismo estilo que clientes.html) */
+        .btn-top-inicio {
+            display: inline-flex;
+            align-items: center;
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-top-inicio:hover { 
+            opacity: 0.9; 
+            transform: translateX(-5px); 
+            box-shadow: 0 4px 12px rgba(93, 95, 239, 0.3);
+        }
+
+        /* Panel de Controles */
+        .controls {
+            width: 380px;
+            background: var(--panel-color);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            height: fit-content;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
         h2 { margin-top: 0; color: var(--primary); font-size: 1.3rem; text-transform: uppercase; letter-spacing: 1px; }
         h3 { font-size: 1rem; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 20px; }
+
         .control-group { margin-bottom: 12px; }
         label { display: block; font-size: 0.85em; font-weight: 600; margin-bottom: 4px; color: #4b5563; }
-        input[type="number"], input[type="text"], select { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        .checkbox-group { display: flex; align-items: center; gap: 10px; background: #f9fafb; padding: 10px; border-radius: 6px; }
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: opacity 0.2s; font-family: 'Poppins', sans-serif; }
+        
+        input[type="number"], input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: opacity 0.2s;
+            font-family: 'Poppins', sans-serif;
+        }
         .btn-save { background: #059669; color: white; }
         .btn-print { background: var(--primary); color: white; }
-        .preview-container { flex-grow: 1; display: flex; flex-direction: column; align-items: center; }
-        .ticket-tabs { margin-bottom: 15px; display: flex; gap: 5px; }
-        .ticket-tabs button { padding: 10px 20px; cursor: pointer; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; font-weight: 500; }
-        .ticket-tabs button.active { background: var(--primary); color: white; }
-        #ticket-wrapper { background: #ccc; padding: 20px; border-radius: 4px; }
-        #ticket-preview { background: white; box-shadow: 0 0 15px rgba(0,0,0,0.3); overflow: hidden; min-height: 100px; color: #000; }
+        .btn:hover { opacity: 0.9; }
+
+        /* Contenedor de Vista Previa */
+        .preview-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .ticket-tabs {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .ticket-tabs button {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid #d1d5db;
+            background: #fff;
+            border-radius: 6px;
+            font-weight: 500;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .ticket-tabs button.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* ÁREA DEL TICKET */
+        #ticket-wrapper {
+            background: #ccc; 
+            padding: 20px;
+            border-radius: 4px;
+        }
+
+        #ticket-preview {
+            background: white;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            box-sizing: border-box;
+            overflow: hidden;
+            min-height: 100px;
+            color: #000;
+        }
+
         .item-row { display: flex; justify-content: space-between; }
         .text-center { text-align: center; }
         .bold { font-weight: bold; }
         .separator { border-top: 1px dashed #000; margin: 8px 0; }
-        @media print { body * { visibility: hidden; } #ticket-preview, #ticket-preview * { visibility: visible; } #ticket-preview { position: absolute; left: 0; top: 0; box-shadow: none; transform: scale(1) !important; } @page { margin: 0; } }
+
+        @media print {
+            body * { visibility: hidden; }
+            #ticket-preview, #ticket-preview * { visibility: visible; }
+            #ticket-preview {
+                position: absolute;
+                left: 0;
+                top: 0;
+                box-shadow: none;
+                transform: scale(1) !important;
+            }
+            @page { margin: 0; }
+        }
+
+        @media (max-width: 800px) {
+            body { flex-direction: column; align-items: center; }
+            .controls { width: 100%; max-width: 500px; }
+        }
     </style>
 </head>
 <body>
+
     <div class="controls">
-        <a href="index.html" class="btn-top-inicio"><span class="material-icons-round" style="margin-right:8px">home</span> VOLVER AL INICIO</a>
+        <!-- BOTÓN VOLVER AGREGADO -->
+        <a href="index.html" class="btn-top-inicio">
+            <span class="material-icons-round" style="margin-right:8px">home</span> VOLVER AL INICIO
+        </a>
+
         <h2>Ajustes de Ticket</h2>
-        <div class="control-group"><label>Ancho de Papel (mm)</label><input type="number" id="cfgWidth" value="58"></div>
-        <div class="control-group"><label>Margen Superior (px)</label><input type="number" id="cfgMarginTop" value="10"></div>
-        <div class="control-group"><label>Márgenes Laterales (px)</label><input type="number" id="cfgMarginSide" value="5"></div>
-        <div class="control-group"><label>Tamaño de Letra (px)</label><input type="number" id="cfgFontSize" value="12"></div>
-        <div class="control-group"><label>Escala de Impresión (%)</label><input type="number" id="cfgScale" value="100"></div>
-        <div class="control-group"><label>Separador de Ítems (Texto)</label><input type="text" id="cfgSeparator" value="--------------------------------"></div>
-        <div class="control-group checkbox-group"><input type="checkbox" id="cfgBold"><label style="margin-bottom:0">Usar Negrita en todo</label></div>
+        
+        <div class="control-group">
+            <label>Ancho de Papel (mm)</label>
+            <input type="number" id="cfgWidth" value="58">
+        </div>
+
+        <div class="control-group">
+            <label>Margen Superior (px)</label>
+            <input type="number" id="cfgMarginTop" value="10">
+        </div>
+
+        <div class="control-group">
+            <label>Márgenes Laterales (px)</label>
+            <input type="number" id="cfgMarginSide" value="5">
+        </div>
+
+        <div class="control-group">
+            <label>Tamaño de Letra (px)</label>
+            <input type="number" id="cfgFontSize" value="12">
+        </div>
+
+        <div class="control-group">
+            <label>Escala de Impresión (%)</label>
+            <input type="number" id="cfgScale" value="100">
+        </div>
+
+        <div class="control-group">
+            <label>Separador de Ítems (Texto)</label>
+            <input type="text" id="cfgSeparator" value="--------------------------------">
+        </div>
+
+        <div class="control-group checkbox-group">
+            <input type="checkbox" id="cfgBold"> 
+            <label style="margin-bottom:0">Usar Negrita en todo</label>
+        </div>
+
         <button class="btn btn-save" onclick="saveSettings()">GUARDAR CONFIGURACIÓN</button>
         <button class="btn btn-print" onclick="window.print()">PROBAR IMPRESIÓN</button>
+        
+        <p style="font-size: 11px; color: #666; margin-top: 15px; text-align: center;">
+            * Los cambios afectarán a todos los recibos del sistema.
+        </p>
     </div>
+
     <div class="preview-container">
         <div class="ticket-tabs">
             <button onclick="updatePreview('nuevo')" id="tab-nuevo">Nuevo Préstamo</button>
             <button onclick="updatePreview('cobro')" id="tab-cobro">Cobro</button>
             <button onclick="updatePreview('reimpresion')" id="tab-reimpresion">Reimpresión</button>
         </div>
-        <div id="ticket-wrapper"><div id="ticket-preview"><div id="ticket-content"></div></div></div>
+
+        <div id="ticket-wrapper">
+            <div id="ticket-preview">
+                <div id="ticket-content">
+                    <!-- Contenido dinámico -->
+                </div>
+            </div>
+        </div>
     </div>
+
     <script>
-        const defaultConfig = { width: 58, marginTop: 10, marginSide: 5, fontSize: 12, scale: 100, separator: "--------------------------------", bold: false };
+        const defaultConfig = {
+            width: 58,
+            marginTop: 10,
+            marginSide: 5,
+            fontSize: 12,
+            scale: 100,
+            separator: "--------------------------------",
+            bold: false
+        };
+
         let currentType = 'nuevo';
+
         function applyStyles() {
             const ticket = document.getElementById('ticket-preview');
             const valWidth = document.getElementById('cfgWidth').value;
+            const valTop = document.getElementById('cfgMarginTop').value;
+            const valSide = document.getElementById('cfgMarginSide').value;
+            const valFontSize = document.getElementById('cfgFontSize').value;
+            const valBold = document.getElementById('cfgBold').checked;
+            const valScale = document.getElementById('cfgScale').value;
+
             ticket.style.width = (valWidth * 3.78) + 'px';
-            ticket.style.paddingTop = document.getElementById('cfgMarginTop').value + 'px';
-            ticket.style.paddingLeft = document.getElementById('cfgMarginSide').value + 'px';
-            ticket.style.paddingRight = document.getElementById('cfgMarginSide').value + 'px';
-            ticket.style.fontSize = document.getElementById('cfgFontSize').value + 'px';
-            ticket.style.fontWeight = document.getElementById('cfgBold').checked ? 'bold' : 'normal';
-            ticket.style.transform = `scale(${document.getElementById('cfgScale').value / 100})`;
+            ticket.style.paddingTop = valTop + 'px';
+            ticket.style.paddingLeft = valSide + 'px';
+            ticket.style.paddingRight = valSide + 'px';
+            ticket.style.fontSize = valFontSize + 'px';
+            ticket.style.fontWeight = valBold ? 'bold' : 'normal';
+            
+            ticket.style.transform = `scale(${valScale / 100})`;
             ticket.style.transformOrigin = 'top center';
         }
+
         function saveSettings() {
-            const config = { width: document.getElementById('cfgWidth').value, marginTop: document.getElementById('cfgMarginTop').value, marginSide: document.getElementById('cfgMarginSide').value, fontSize: document.getElementById('cfgFontSize').value, scale: document.getElementById('cfgScale').value, separator: document.getElementById('cfgSeparator').value, bold: document.getElementById('cfgBold').checked };
+            const config = {
+                width: document.getElementById('cfgWidth').value,
+                marginTop: document.getElementById('cfgMarginTop').value,
+                marginSide: document.getElementById('cfgMarginSide').value,
+                fontSize: document.getElementById('cfgFontSize').value,
+                scale: document.getElementById('cfgScale').value,
+                separator: document.getElementById('cfgSeparator').value,
+                bold: document.getElementById('cfgBold').checked
+            };
             localStorage.setItem('ticketConfig', JSON.stringify(config));
-            alert("Guardado.");
+            alert("Configuración de impresión guardada con éxito.");
             applyStyles();
             updatePreview(currentType);
         }
+
         function loadSettings() {
             const saved = JSON.parse(localStorage.getItem('ticketConfig')) || defaultConfig;
             document.getElementById('cfgWidth').value = saved.width;
@@ -89,21 +295,58 @@
             document.getElementById('cfgBold').checked = saved.bold;
             updatePreview('nuevo');
         }
+
         function updatePreview(type) {
             currentType = type;
             const content = document.getElementById('ticket-content');
             const sepText = document.getElementById('cfgSeparator').value;
-            const emp = JSON.parse(localStorage.getItem('datosEmpresa')) || { nombre: "MI NEGOCIO", telefono: "000", ciudad: "CIUDAD" };
-            let html = `<div class="text-center bold">${emp.nombre.toUpperCase()}</div><div class="text-center">Tel: ${emp.telefono}</div><div class="text-center">${emp.ciudad.toUpperCase()}</div><div class="separator"></div>`;
-            if(type === 'nuevo') html += `<div class="text-center bold">NUEVO PRÉSTAMO</div><br><div>FECHA: 2024-05-24</div><div>CLIENTE: Juan Pérez</div><div>${sepText}</div><div class="item-row"><span>MONTO:</span> <span>$500,000</span></div>`;
-            else if(type === 'cobro') html += `<div class="text-center bold">RECIBO DE CAJA</div><br><div>CLIENTE: Juan Pérez</div><div>${sepText}</div><div class="item-row"><span>PAGADO:</span> <span>$25,000</span></div>`;
-            else html += `<div class="text-center bold">REIMPRESIÓN</div><br><div class="text-center">** DUPLICADO **</div><div>${sepText}</div><div class="item-row"><span>SALDO ACTUAL:</span> <span>$120.000</span></div>`;
-            html += `<div class="separator"></div><div class="text-center">*** Gracias ***</div><div style="height: 30px;"></div>`; 
-            content.innerHTML = html; applyStyles();
+
+            const empresa = JSON.parse(localStorage.getItem('datosEmpresa')) || { 
+                nombre: "MI NEGOCIO", 
+                telefono: "300 000 0000", 
+                ciudad: "CIUDAD" 
+            };
+            
+            let html = `<div class="text-center bold">${empresa.nombre.toUpperCase()}</div>`;
+            html += `<div class="text-center">Tel: ${empresa.telefono}</div>`;
+            html += `<div class="text-center">${empresa.ciudad.toUpperCase()}</div>`;
+            html += `<div class="separator"></div>`;
+
+            if(type === 'nuevo') {
+                html += `<div class="text-center bold">NUEVO PRÉSTAMO</div><br>`;
+                html += `<div>FECHA: 2024-05-24</div>`;
+                html += `<div>CLIENTE: Juan Pérez</div>`;
+                html += `<div>${sepText}</div>`;
+                html += `<div class="item-row"><span>MONTO:</span> <span>$500,000</span></div>`;
+                html += `<div class="item-row"><span>CUOTAS:</span> <span>24</span></div>`;
+            } else if(type === 'cobro') {
+                html += `<div class="text-center bold">RECIBO DE CAJA</div><br>`;
+                html += `<div>CLIENTE: Juan Pérez</div>`;
+                html += `<div>${sepText}</div>`;
+                html += `<div class="item-row"><span>PAGADO:</span> <span>$25,000</span></div>`;
+                html += `<div class="item-row"><span>SALDO:</span> <span>$475,000</span></div>`;
+            } else {
+                html += `<div class="text-center bold">REIMPRESIÓN</div><br>`;
+                html += `<div class="text-center">** DUPLICADO **</div>`;
+                html += `<div>${sepText}</div>`;
+                html += `<div class="item-row"><span>SALDO ACTUAL:</span> <span>$120.000</span></div>`;
+            }
+
+            html += `<div class="separator"></div>`;
+            html += `<div class="text-center">*** Gracias por su confianza ***</div>`;
+            html += `<div style="height: 30px;"></div>`; 
+            
+            content.innerHTML = html;
+            applyStyles();
+            
             document.querySelectorAll('.ticket-tabs button').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + type).classList.add('active');
         }
-        document.querySelectorAll('input').forEach(input => input.addEventListener('input', applyStyles));
+
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', applyStyles);
+        });
+
         window.onload = loadSettings;
     </script>
 </body>

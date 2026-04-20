@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historial de Préstamos</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Scripts de Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
         :root { --bg-color: #121420; --card-bg: #1b1f2d; --input-bg: #24293a; --text-color: #e0e0e0; --accent-color: #4ade80; --accent-hover: #38b263; --border-color: #2e344a; --danger: #ef4444; --warning: #facc15; }
@@ -62,72 +65,96 @@
     </div>
 
     <div id="listaHistorial">
-        <!-- Se llena dinámicamente -->
+        <div class="empty-state">Cargando historial desde la nube...</div>
     </div>
 </div>
 
 <script>
-    // --- DATOS LOCALES (Simulando la base de datos) ---
-    // Puedes editar este array para agregar o quitar registros
-    let historialPagosLocal = [
-        { cliente: "Juan Pérez", fecha: "2023-10-01", hora: "10:30", monto: 50000, saldo: 150000, tipo: "abono" },
-        { cliente: "Juan Pérez", fecha: "2023-10-15", hora: "11:00", monto: 150000, saldo: 0, tipo: "cancelacion" },
-        { cliente: "María García", fecha: "2023-09-20", hora: "09:00", monto: 100000, saldo: 0, tipo: "cancelacion" }
-    ];
+    // --- CONFIGURACIÓN DE FIREBASE ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyCd5NIu5q-iqD0CAQ0zjsObMEjzGCCsOf0",
+    authDomain: "prestamos2-af433.firebaseapp.com",
+    projectId: "prestamos2-af433",
+    storageBucket: "prestamos2-af433.firebasestorage.app",
+    messagingSenderId: "395076881965",
+    appId: "1:395076881965:web:ef9d5b5a3f58f73b9272a4"
+  };
 
-    let clientesLocal = [
-        { nombres: "Juan Pérez", cedula: "12345678", barrio: "Centro" },
-        { nombres: "María García", cedula: "87654321", barrio: "San José" }
-    ];
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    // Función para borrar el historial localmente
-    function vaciarHistorial() {
-        if (confirm("¿Estás seguro de vaciar todo el historial local?")) {
-            historialPagosLocal = [];
-            renderizarHistorial();
+    // Función para borrar el historial en Firebase
+    async function vaciarHistorial() {
+        if (confirm("¿Estás seguro de vaciar todo el historial de préstamos finalizados en la nube?")) {
+            try {
+                const snapshot = await db.collection('historial_impresiones').get();
+                const batch = db.batch();
+                snapshot.docs.forEach((doc) => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+                alert("Historial vaciado correctamente.");
+                renderizarHistorial();
+            } catch (error) {
+                console.error("Error al vaciar historial:", error);
+                alert("Error al intentar vaciar los datos.");
+            }
         }
     }
 
-    function procesarDatos() {
-        // Agrupamos los pagos por cliente
-        const pagosPorCliente = historialPagosLocal.reduce((acc, pago) => {
-            if (!acc[pago.cliente]) acc[pago.cliente] = [];
-            acc[pago.cliente].push(pago);
-            return acc;
-        }, {});
+    async function procesarDatos() {
+        try {
+            // Obtenemos los datos de Firebase
+            const snapshotPagos = await db.collection('historial_impresiones').orderBy('fecha', 'asc').get();
+            const snapshotClientes = await db.collection('clientes').get();
 
-        let prestamosFinalizados = [];
+            const historialPagos = snapshotPagos.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const clientes = snapshotClientes.docs.map(doc => doc.data());
 
-        for (const cliente in pagosPorCliente) {
-            let pagos = pagosPorCliente[cliente];
-            let grupoActual = [];
-            
-            pagos.forEach(pago => {
-                grupoActual.push(pago);
-                // Si el saldo llega a 0, consideramos el préstamo como finalizado
-                if (parseFloat(pago.saldo) === 0) {
-                    const datosCliente = clientesLocal.find(c => c.nombres === cliente) || { cedula: "N/A", barrio: "N/A" };
-                    
-                    prestamosFinalizados.push({
-                        cliente: cliente,
-                        cedula: datosCliente.cedula,
-                        barrio: datosCliente.barrio,
-                        fechaFinalizacion: pago.fecha,
-                        movimientos: [...grupoActual]
-                    });
-                    grupoActual = [];
-                }
-            });
+            const pagosPorCliente = historialPagos.reduce((acc, pago) => {
+                if (!acc[pago.cliente]) acc[pago.cliente] = [];
+                acc[pago.cliente].push(pago);
+                return acc;
+            }, {});
+
+            let prestamosFinalizados = [];
+
+            for (const cliente in pagosPorCliente) {
+                let pagos = pagosPorCliente[cliente];
+                let grupoActual = [];
+                
+                pagos.forEach(pago => {
+                    grupoActual.push(pago);
+                    // Lógica para detectar fin de préstamo (saldo 0)
+                    if (parseFloat(pago.saldo) === 0) {
+                        const datosCliente = clientes.find(c => c.nombres === cliente) || { cedula: "N/A", barrio: "N/A" };
+                        
+                        prestamosFinalizados.push({
+                            cliente: cliente,
+                            cedula: datosCliente.cedula,
+                            barrio: datosCliente.barrio,
+                            fechaFinalizacion: pago.fecha,
+                            movimientos: [...grupoActual],
+                            idUnico: pago.id
+                        });
+                        grupoActual = [];
+                    }
+                });
+            }
+            return prestamosFinalizados.reverse();
+        } catch (error) {
+            console.error("Error procesando datos de Firebase:", error);
+            return [];
         }
-        // Devolvemos los más recientes primero
-        return prestamosFinalizados.reverse();
     }
 
-    function renderizarHistorial() {
+    async function renderizarHistorial() {
         const contenedor = document.getElementById('listaHistorial');
         const filtro = document.getElementById('buscador').value.toLowerCase();
         
-        const prestamos = procesarDatos();
+        // Llamada asíncrona a la base de datos
+        const prestamos = await procesarDatos();
         
         contenedor.innerHTML = "";
 

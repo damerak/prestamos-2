@@ -51,7 +51,9 @@
         .dropdown-content button:hover { background-color: var(--accent-color); }
         .btn-del { color: var(--danger) !important; border-top: 1px solid var(--border-color) !important; }
         
+        /* CAMBIO: Se añadió justify-content para que no ocupe todo el ancho */
         .input-otro-valor { display: none; margin-top: 15px; grid-column: 1 / -1; background: var(--input-bg); padding: 12px; border-radius: 8px; align-items: center; gap: 10px; border: 1px solid var(--accent-color); justify-content: flex-start; width: fit-content; }
+        /* CAMBIO: Se quitó flex: 1 y se puso un ancho inicial pequeño */
         .input-otro-valor input { width: 10ch; min-width: 60px; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background: #121420; color: white; outline: none; font-size: 1rem; transition: width 0.1s; }
         
         .btn-confirm { background: var(--success); color: #121420; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
@@ -76,22 +78,36 @@
 
 <iframe id="iframeImpresion"></iframe>
 
-<script>
-    // --- LÓGICA DE DATOS LOCALES (LocalStorage) ---
+<!-- FIREBASE SDK -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, addDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCd5NIu5q-iqD0CAQ0zjsObMEjzGCCsOf0",
+    authDomain: "prestamos2-af433.firebaseapp.com",
+    projectId: "prestamos2-af433",
+    storageBucket: "prestamos2-af433.firebasestorage.app",
+    messagingSenderId: "395076881965",
+    appId: "1:395076881965:web:ef9d5b5a3f58f73b9272a4"
+  };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
     let prestamos = [];
     let clientes = [];
 
-    function cargarDatos() {
-        // Carga desde el almacenamiento del navegador
-        prestamos = JSON.parse(localStorage.getItem('prestamos')) || [];
-        clientes = JSON.parse(localStorage.getItem('clientes')) || [];
+    // Sincronización en tiempo real
+    onSnapshot(collection(db, "clientes"), (snapshot) => {
+        clientes = snapshot.docs.map(doc => ({ id_db: doc.id, ...doc.data() }));
         renderizar();
-    }
+    });
 
-    function guardarDatos() {
-        localStorage.setItem('prestamos', JSON.stringify(prestamos));
+    onSnapshot(collection(db, "prestamos"), (snapshot) => {
+        prestamos = snapshot.docs.map(doc => ({ id_db: doc.id, ...doc.data() }));
         renderizar();
-    }
+    });
 
     function renderizar() {
         const contenedor = document.getElementById('listaBarrios');
@@ -177,7 +193,7 @@
         window.manejarCheckboxes();
     }
 
-    // --- ACCIONES ---
+    // --- FUNCIONES GLOBALES ---
 
     window.manejarCheckboxes = function() {
         const seleccionados = document.querySelectorAll('.chk-prestamo:checked').length;
@@ -185,18 +201,20 @@
         btnEliminar.style.display = seleccionados > 0 ? 'block' : 'none';
     };
 
-    window.eliminarSeleccionados = function() {
+    window.eliminarSeleccionados = async function() {
         const seleccionados = Array.from(document.querySelectorAll('.chk-prestamo:checked')).map(cb => cb.value);
         if(confirm(`¿Estás seguro de eliminar los ${seleccionados.length} préstamos seleccionados?`)) {
-            prestamos = prestamos.filter(p => !seleccionados.includes(p.id_db));
-            guardarDatos();
+            const batch = writeBatch(db);
+            seleccionados.forEach(id_db => {
+                batch.delete(doc(db, "prestamos", id_db));
+            });
+            await batch.commit();
         }
     };
 
-    window.procesarPago = function(id_db, tipo) {
-        let index = prestamos.findIndex(x => x.id_db === id_db);
-        if (index === -1) return;
-        let p = prestamos[index];
+    window.procesarPago = async function(id_db, tipo) {
+        let p = prestamos.find(x => x.id_db === id_db);
+        if (!p) return;
 
         let valorAbono = 0;
         if (tipo === 'cuota') valorAbono = parseNum(p.total) / p.cuotas;
@@ -215,26 +233,23 @@
                 hora: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) 
             };
 
-            // Guardar en historial local
-            let historial = JSON.parse(localStorage.getItem('historial_impresiones')) || [];
-            historial.push(log);
-            localStorage.setItem('historial_impresiones', JSON.stringify(historial));
-
-            generarRecibo(p, valorAbono, nuevoSaldo);
-
-            if (nuevoSaldo === 0) {
-                prestamos.splice(index, 1);
-            } else {
-                prestamos[index].saldo = nuevoSaldo;
+            try {
+                await addDoc(collection(db, "historial_impresiones"), log);
+                generarRecibo(p, valorAbono, nuevoSaldo);
+                if (nuevoSaldo === 0) {
+                    await deleteDoc(doc(db, "prestamos", id_db));
+                } else {
+                    await updateDoc(doc(db, "prestamos", id_db), { saldo: nuevoSaldo });
+                }
+            } catch (e) {
+                alert("Error al procesar el pago");
             }
-            guardarDatos();
         }
     };
 
-    window.eliminar = function(id_db) {
+    window.eliminar = async function(id_db) {
         if(confirm("¿Estás seguro de eliminar este préstamo? Esta acción no se puede deshacer.")) {
-            prestamos = prestamos.filter(p => p.id_db !== id_db);
-            guardarDatos();
+            await deleteDoc(doc(db, "prestamos", id_db));
         }
     };
 
@@ -253,9 +268,11 @@
         input.focus(); 
     };
 
+    // CAMBIO: La función ahora también ajusta el ancho (width) basándose en la longitud del texto
     window.aplicarMascara = function(i) { 
         let v = i.value.replace(/\D/g, ""); 
         i.value = v.replace(/\B(?=(\d{3})+(?!\d))/g, "."); 
+        // Ajuste dinámico de ancho
         i.style.width = i.value.length > 0 ? (i.value.length + 2) + "ch" : "10ch";
     };
 
@@ -273,15 +290,24 @@
             <head>
                 <style>
                     @page { margin: 0; size: auto; }
-                    body { width: 48mm; margin: 0 auto; padding: ${cf.marginTop}px 0; text-align: center; color: #000; font-family: 'Courier New', monospace; font-size: ${cf.fontSize}px; line-height: 1.2; }
+                    body { 
+                        width: 48mm; margin: 0 auto; 
+                        padding: ${cf.marginTop}px 0; 
+                        text-align: center; color: #000;
+                        font-family: 'Courier New', monospace;
+                        font-size: ${cf.fontSize}px;
+                        line-height: 1.2;
+                    }
                     .bold { font-weight: bold; }
                     .sep { margin: 5px 0; overflow: hidden; white-space: nowrap; }
                     .box { border: 1px solid #000; padding: 5px; margin: 8px 0; }
+                    .row { display: flex; justify-content: space-between; }
                 </style>
             </head>
             <body>
                 <div class="bold">${empresa.nombre.toUpperCase()}</div>
                 <div>TEL: ${empresa.telefono}</div>
+                <div>${empresa.ciudad.toUpperCase()}</div>
                 <div class="sep">${cf.separator}</div>
                 <div class="bold">RECIBO DE ABONO</div>
                 <div class="sep">${cf.separator}</div>
@@ -293,13 +319,17 @@
                 <div class="box bold">PAGO: ${formatear(abono)}</div>
                 <div class="bold">SALDO RESTANTE: ${formatear(nuevoSaldo)}</div>
                 <div class="sep">${cf.separator}</div>
-                <div style="margin-top:10px;">¡Gracias!</div>
+                <div style="margin-top:10px;">¡Gracias por su puntualidad!</div>
+                <div style="height:40px">.</div>
             </body>
             </html>
         `);
         docIframe.close();
 
-        setTimeout(() => { win.focus(); win.print(); }, 500);
+        setTimeout(() => {
+            win.focus();
+            win.print();
+        }, 500);
     }
 
     function parseNum(str) { 
@@ -320,9 +350,6 @@
             document.querySelectorAll('.input-otro-valor').forEach(el => el.classList.remove('flex-show')); 
         } 
     };
-
-    // Inicio
-    window.onload = cargarDatos;
 </script>
 </body>
 </html>

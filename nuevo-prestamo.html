@@ -6,6 +6,10 @@
     <title>Crear Préstamo</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     
+    <!-- FIREBASE SDKS -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
     <style>
         :root {
             --bg-color: #121420;
@@ -52,6 +56,7 @@
         button:hover { background-color: var(--accent-hover); }
         button:disabled { background-color: #444; cursor: not-allowed; }
 
+        /* Iframe invisible para impresión */
         #iframeImpresion { position: absolute; width: 0; height: 0; border: none; visibility: hidden; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -63,19 +68,24 @@
     <h2>Crear Préstamo</h2>
     <form id="prestamoForm">
         <div class="form-grid">
-            <!-- Selector de Clientes -->
             <select id="selectCliente" class="full-width" required>
-                <option value="">Cargando clientes...</option>
+                <option value="">Seleccionar Cliente...</option>
             </select>
+            
+            <select id="frecuencia" class="full-width">
+                <option value="diario">Crédito Diario</option>
+                <option value="semanal">Crédito Semanal</option>
+            </select>
+
             <input type="text" id="monto" placeholder="Monto (Ej: 600.000)" required>
             <input type="number" id="porcentaje" placeholder="%" value="20" required>
             <input type="number" id="cuotas" class="full-width" placeholder="Número de cuotas" required>
         </div>
         <div class="summary-box">
             <div class="summary-line"><span>Fecha Inicio:</span><span id="txtFecha">-</span></div>
-            <div class="summary-line"><span>Bono Rifa (5%):</span><span id="txtBono">$0</span></div>
+            <div class="summary-line"><span>Bono Rifa:</span><span id="txtBono">$0</span></div>
             <div class="summary-line"><span>ENTREGADO AL CLIENTE:</span><span id="txtEntregado" class="entregado-val">$0</span></div>
-            <div class="summary-line"><span>Valor Cuota:</span><span id="txtCuota">$0</span></div>
+            <div class="summary-line"><span id="lblValorCuota">Valor Cuota:</span><span id="txtCuota">$0</span></div>
             <div class="total-row">
                 <span class="total-label">TOTAL A PAGAR:</span>
                 <span class="total-amount" id="txtTotal">$0</span>
@@ -88,8 +98,21 @@
 <iframe id="iframeImpresion"></iframe>
 
 <script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCd5NIu5q-iqD0CAQ0zjsObMEjzGCCsOf0",
+    authDomain: "prestamos2-af433.firebaseapp.com",
+    projectId: "prestamos2-af433",
+    storageBucket: "prestamos2-af433.firebasestorage.app",
+    messagingSenderId: "395076881965",
+    appId: "1:395076881965:web:ef9d5b5a3f58f73b9272a4"
+  };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     const form = document.getElementById('prestamoForm');
     const selectCliente = document.getElementById('selectCliente');
+    const frecuencia = document.getElementById('frecuencia');
     const inputMonto = document.getElementById('monto');
     const inputPorcentaje = document.getElementById('porcentaje');
     const inputCuotas = document.getElementById('cuotas');
@@ -99,38 +122,73 @@
     const txtCuota = document.getElementById('txtCuota');
     const txtTotal = document.getElementById('txtTotal');
     const btnGuardar = document.getElementById('btnGuardar');
+    const lblValorCuota = document.getElementById('lblValorCuota');
 
-    // --- CORRECCIÓN AQUÍ: Ahora usa la llave 'clientes' ---
-    function cargarClientes() {
-        const clientes = JSON.parse(localStorage.getItem('clientes')) || [];
-        
-        selectCliente.innerHTML = '<option value="">Seleccionar Cliente...</option>';
-        
-        if (clientes.length === 0) {
-            selectCliente.innerHTML = '<option value="">No hay clientes registrados</option>';
-            return;
+    let clientesData = []; 
+
+    async function cargarClientes() {
+        try {
+            const snapshot = await db.collection('clientes').get();
+            clientesData = [];
+            snapshot.forEach(doc => {
+                let c = doc.data();
+                clientesData.push(c);
+            });
+
+            // --- ORGANIZAR DE LA A A LA Z ---
+            clientesData.sort((a, b) => a.nombres.localeCompare(b.nombres));
+
+            selectCliente.innerHTML = '<option value="">Seleccionar Cliente...</option>';
+            clientesData.forEach(c => {
+                let option = document.createElement('option');
+                option.value = c.nombres; 
+                option.textContent = c.nombres;
+                selectCliente.appendChild(option);
+            });
+
+        } catch (error) {
+            console.error("Error al cargar clientes:", error);
         }
-
-        clientes.sort((a, b) => a.nombres.localeCompare(b.nombres));
-
-        clientes.forEach(cliente => {
-            let option = document.createElement('option');
-            option.value = cliente.nombres; 
-            option.textContent = cliente.nombres;
-            selectCliente.appendChild(option);
-        });
-        
         txtFecha.textContent = new Date().toLocaleDateString();
     }
+
+    selectCliente.addEventListener('change', () => {
+        const clienteSeleccionado = clientesData.find(c => c.nombres === selectCliente.value);
+        if (clienteSeleccionado && clienteSeleccionado.nota && clienteSeleccionado.nota.trim() !== "") {
+            alert("⚠️ NOTA IMPORTANTE DEL CLIENTE:\n\n" + clienteSeleccionado.nota);
+        }
+    });
+
+    frecuencia.addEventListener('change', () => {
+        if (frecuencia.value === 'semanal') {
+            inputCuotas.placeholder = "Número de semanas";
+            lblValorCuota.textContent = "Valor Semanal:";
+        } else {
+            inputCuotas.placeholder = "Número de cuotas";
+            lblValorCuota.textContent = "Valor Cuota:";
+        }
+        calcular();
+    });
 
     function calcular() {
         let monto = parseFloat(inputMonto.value.replace(/\./g, "")) || 0;
         let porc = parseFloat(inputPorcentaje.value) || 0;
-        let cuotas = parseInt(inputCuotas.value) || 0;
+        let numPlazos = parseInt(inputCuotas.value) || 0;
+        
         let total = monto + (monto * (porc / 100));
-        let valorCuota = cuotas > 0 ? (total / cuotas) : 0;
-        txtBono.textContent = formatearCOP(monto * 0.05);
-        txtEntregado.textContent = formatearCOP(monto * 0.95);
+        let valorCuota = numPlazos > 0 ? (total / numPlazos) : 0;
+        
+        let bonoRifa = 0;
+        if (frecuencia.value === 'diario') {
+            bonoRifa = valorCuota;
+        } else {
+            bonoRifa = monto * 0.05;
+        }
+
+        let entregado = monto - bonoRifa;
+
+        txtBono.textContent = formatearCOP(bonoRifa);
+        txtEntregado.textContent = formatearCOP(entregado);
         txtCuota.textContent = formatearCOP(valorCuota);
         txtTotal.textContent = formatearCOP(total);
     }
@@ -142,13 +200,18 @@
     
     [inputPorcentaje, inputCuotas].forEach(el => el.addEventListener('input', calcular));
 
-    function formatearCOP(n) { 
-        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); 
-    }
+    function formatearCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); }
 
     function imprimirNuevoPrestamo(datos) {
         const empresa = JSON.parse(localStorage.getItem('datosEmpresa')) || { nombre: "EMPRESA", telefono: "000", ciudad: "BOGOTA" };
-        const cf = JSON.parse(localStorage.getItem('ticketConfig')) || { width: 58, marginTop: 10, marginSide: 5, fontSize: 12, separator: "--------------------------------", bold: false };
+        const cf = JSON.parse(localStorage.getItem('ticketConfig')) || { 
+            width: 58, marginTop: 10, marginSide: 5, fontSize: 12, 
+            separator: "--------------------------------", bold: false 
+        };
+
+        const tipoPlazo = frecuencia.value === 'semanal' ? "SEMANAS" : "CUOTAS";
+        const bonoValor = parseFloat(txtBono.textContent.replace(/[^0-9]/g,""));
+        const entregadoValor = datos.monto - bonoValor;
 
         const iframe = document.getElementById('iframeImpresion');
         const win = iframe.contentWindow;
@@ -160,7 +223,14 @@
             <head>
                 <style>
                     @page { margin: 0; size: auto; }
-                    body { width: 48mm; margin: 0 auto; padding: ${cf.marginTop}px 0; text-align: center; color: #000; font-family: 'Courier New', monospace; font-size: ${cf.fontSize}px; line-height: 1.2; }
+                    body { 
+                        width: 48mm; margin: 0 auto; 
+                        padding: ${cf.marginTop}px 0; 
+                        text-align: center; color: #000;
+                        font-family: 'Courier New', monospace;
+                        font-size: ${cf.fontSize}px;
+                        line-height: 1.2;
+                    }
                     .bold { font-weight: bold; }
                     .sep { margin: 5px 0; overflow: hidden; white-space: nowrap; }
                     .row { display: flex; justify-content: space-between; }
@@ -170,8 +240,9 @@
             <body>
                 <div class="bold">${empresa.nombre.toUpperCase()}</div>
                 <div>TEL: ${empresa.telefono}</div>
+                <div>${empresa.ciudad.toUpperCase()}</div>
                 <div class="sep">${cf.separator}</div>
-                <div class="bold">NUEVO PRÉSTAMO</div>
+                <div class="bold">NUEVO PRÉSTAMO (${frecuencia.value.toUpperCase()})</div>
                 <div class="sep">${cf.separator}</div>
                 <div style="text-align:left">
                     FECHA: ${new Date().toLocaleDateString()}<br>
@@ -179,67 +250,72 @@
                 </div>
                 <div class="sep">${cf.separator}</div>
                 <div class="row"><span>MONTO:</span><span>${formatearCOP(datos.monto)}</span></div>
-                <div class="row"><span>CUOTAS:</span><span>${datos.cuotas}</span></div>
+                <div class="row"><span>INTERÉS:</span><span>${datos.porcentaje}%</span></div>
+                <div class="row"><span>${tipoPlazo}:</span><span>${datos.cuotas}</span></div>
+                <div class="row"><span>BONO RIFA:</span><span>${formatearCOP(bonoValor)}</span></div>
+                <div class="sep">${cf.separator}</div>
+                <div class="row bold"><span>ENTREGADO:</span><span>${formatearCOP(entregadoValor)}</span></div>
                 <div class="box">
                     <div class="bold">TOTAL A PAGAR</div>
                     <div class="bold" style="font-size: 1.2em;">${datos.total}</div>
                 </div>
-                <div class="bold">CUOTA: ${txtCuota.textContent}</div>
+                <div class="bold">VALOR ${tipoPlazo.slice(0,-1)}: ${txtCuota.textContent}</div>
                 <div class="sep">${cf.separator}</div>
-                <div style="margin-top:10px;">¡Gracias!</div>
+                <div style="margin-top:10px;">*** Gracias por su confianza ***</div>
                 <div style="height:50px">.</div>
             </body>
             </html>
         `);
         doc.close();
-        setTimeout(() => { win.focus(); win.print(); }, 500);
+
+        setTimeout(() => {
+            win.focus();
+            win.print();
+        }, 500);
     }
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        if (!selectCliente.value) {
-            alert("Por favor seleccione un cliente.");
-            return;
-        }
-
         btnGuardar.disabled = true;
+        btnGuardar.textContent = "Guardando...";
 
-        const montoReal = parseFloat(inputMonto.value.replace(/\./g, ""));
-        const totalLimpio = parseFloat(txtTotal.textContent.replace(/[^0-9]/g,""));
-
+        const montoReal = inputMonto.value.replace(/\./g, "");
         const prestamo = { 
             id: Date.now().toString(), 
-            id_db: Date.now().toString(), // Para compatibilidad con prestamos.html
             cliente: selectCliente.value, 
-            monto: montoReal, 
+            monto: parseFloat(montoReal), 
             porcentaje: inputPorcentaje.value, 
             cuotas: inputCuotas.value, 
+            frecuencia: frecuencia.value,
             total: txtTotal.textContent, 
-            saldo: totalLimpio, 
+            saldo: parseFloat(txtTotal.textContent.replace(/[^0-9]/g,"")), 
             fecha: new Date().toLocaleDateString()
         };
         
-        const log = { ...prestamo, tipo: 'nuevo', monto: montoReal, saldo: totalLimpio, hora: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) };
+        const log = { ...prestamo, tipo: 'nuevo', hora: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) };
 
         try {
-            // --- CORRECCIÓN AQUÍ: Ahora guarda en 'prestamos' ---
-            const prestamosActuales = JSON.parse(localStorage.getItem('prestamos')) || [];
-            prestamosActuales.push(prestamo);
-            localStorage.setItem('prestamos', JSON.stringify(prestamosActuales));
-
-            // Guardar en historial
-            const historialActual = JSON.parse(localStorage.getItem('historial_impresiones')) || [];
-            historialActual.push(log);
-            localStorage.setItem('historial_impresiones', JSON.stringify(historialActual));
+            await db.collection('prestamos').doc(prestamo.id).set(prestamo);
+            await db.collection('historial_impresiones').add(log);
 
             imprimirNuevoPrestamo(prestamo);
-            alert("✅ Préstamo guardado.");
-            window.location.href = "index.html";
+
+            form.reset();
+            txtBono.textContent = "$0";
+            txtEntregado.textContent = "$0";
+            txtCuota.textContent = "$0";
+            txtTotal.textContent = "$0";
+            lblValorCuota.textContent = "Valor Cuota:";
+            inputCuotas.placeholder = "Número de cuotas";
+            
+            alert("✅ Préstamo guardado e impreso con éxito.");
 
         } catch (error) {
-            alert("Error al guardar.");
+            console.error("Error al guardar:", error);
+            alert("Hubo un error al guardar en la base de datos.");
+        } finally {
             btnGuardar.disabled = false;
+            btnGuardar.textContent = "Guardar e Imprimir";
         }
     });
 

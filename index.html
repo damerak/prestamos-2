@@ -6,6 +6,11 @@
     <title>Gestorio - Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <!-- Scripts de Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
     <style>
         :root {
             --bg-color: #0f111a;
@@ -17,6 +22,7 @@
             --success: #10b981;
             --warning: #f59e0b;
             --history: #a855f7;
+            --danger: #ef4444;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
@@ -92,11 +98,33 @@
             gap: 8px;
             transition: 0.2s ease;
             height: 60px;
+            position: relative; /* Necesario para ubicar el badge */
         }
 
         .menu-card:active {
             transform: scale(0.95);
             background: rgba(99, 102, 241, 0.1);
+        }
+
+        /* Estilo del Badge (Círculo de cantidad) */
+        .badge-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--danger);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: bold;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            display: none; /* Oculto por defecto */
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+            border: 2px solid var(--bg-color);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            z-index: 10;
         }
 
         .icon-box {
@@ -111,20 +139,10 @@
             flex-shrink: 0;
         }
 
-        .icon-box .material-icons-round {
-            font-size: 18px;
-        }
+        .icon-box .material-icons-round { font-size: 18px; }
 
-        .card-info h3 { 
-            font-size: 0.75rem; 
-            font-weight: 600; 
-            line-height: 1.1;
-        }
-        .card-info p { 
-            font-size: 0.6rem; 
-            color: var(--text-muted);
-            white-space: nowrap;
-        }
+        .card-info h3 { font-size: 0.75rem; font-weight: 600; line-height: 1.1; }
+        .card-info p { font-size: 0.6rem; color: var(--text-muted); white-space: nowrap; }
 
         .card-recaudo .icon-box { color: var(--success); background: rgba(16, 185, 129, 0.1); }
         .card-stats .icon-box { color: var(--warning); background: rgba(245, 158, 11, 0.1); }
@@ -133,11 +151,6 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-
-        @media (max-height: 700px) {
-            .menu-card { height: 55px; }
-            .section-title { margin: 5px 0 4px 0; }
         }
     </style>
 </head>
@@ -149,6 +162,7 @@
         <div class="date" id="current-date"></div>
     </div>
 
+    <!-- SECCIÓN DE CLIENTES -->
     <div class="section-title">Clientes</div>
     <div class="menu-grid">
         <a href="nuevo-cliente.html" class="menu-card">
@@ -167,6 +181,7 @@
         </a>
     </div>
 
+    <!-- SECCIÓN DE GESTIÓN Y CARTERA -->
     <div class="section-title">Gestión</div>
     <div class="menu-grid">
         <a href="nuevo-prestamo.html" class="menu-card">
@@ -184,6 +199,8 @@
             </div>
         </a>
         <a href="cobros.html" class="menu-card card-recaudo">
+            <!-- Badge de Cobros -->
+            <div id="badge-cobros" class="badge-count"></div>
             <div class="icon-box"><span class="material-icons-round">request_quote</span></div>
             <div class="card-info">
                 <h3>Cobros</h3>
@@ -199,6 +216,7 @@
         </a>
     </div>
 
+    <!-- SECCIÓN DE ANÁLISIS Y AJUSTES -->
     <div class="section-title">Análisis y Ajustes</div>
     <div class="menu-grid">
         <a href="reimpresion.html" class="menu-card">
@@ -233,8 +251,71 @@
 </div>
 
 <script>
+    // Configuración de Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyCarhhvBeuECGQL_6VU-huoK0hqu3q_lZ4",
+        authDomain: "prestamos-ba860.firebaseapp.com",
+        projectId: "prestamos-ba860",
+        storageBucket: "prestamos-ba860.firebasestorage.app",
+        messagingSenderId: "854942370995",
+        appId: "1:854942370995:web:06aba4cd63c03d12fb34c6"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Función para calcular días desde el inicio del préstamo
+    function calcularDiasTranscurridos(fecha) {
+        if (!fecha) return 0;
+        const partes = fecha.split('/');
+        const inicio = new Date(partes[2], partes[1] - 1, partes[0]);
+        const hoy = new Date(); hoy.setHours(0,0,0,0);
+        const diff = Math.floor((hoy - inicio) / (1000 * 60 * 60 * 24));
+        return diff < 0 ? 0 : diff;
+    }
+
+    // Escuchar la base de datos para actualizar el contador de cobros
+    function monitorizarCobros() {
+        const badge = document.getElementById('badge-cobros');
+        
+        db.collection('prestamos').onSnapshot(snapshot => {
+            let contador = 0;
+
+            snapshot.forEach(doc => {
+                const p = doc.data();
+                const diasDeuda = calcularDiasTranscurridos(p.fecha);
+                let cuotasQueDeberiaTener = 0;
+
+                if (p.frecuencia === 'semanal') {
+                    cuotasQueDeberiaTener = Math.floor(diasDeuda / 7);
+                } else {
+                    cuotasQueDeberiaTener = diasDeuda;
+                }
+
+                const abonosRealizados = p.abonosRealizados || 0;
+
+                // Si debe una o más cuotas, sumamos al contador
+                if (cuotasQueDeberiaTener > abonosRealizados) {
+                    contador++;
+                }
+            });
+
+            // Lógica de visualización del badge
+            if (contador > 0) {
+                badge.textContent = contador;
+                badge.style.display = 'flex'; // Aparece el círculo rojo
+            } else {
+                badge.style.display = 'none'; // Desaparece por completo
+            }
+        });
+    }
+
+    // Mostrar fecha actual
     const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
     document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-ES', options);
+
+    // Iniciar monitoreo al cargar
+    window.onload = monitorizarCobros;
 </script>
 
 </body>

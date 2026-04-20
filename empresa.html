@@ -9,8 +9,10 @@
         :root { --bg-color: #0f121d; --card-bg: rgba(23, 28, 41, 0.8); --accent-color: #5b61f1; --text-color: #ffffff; }
         body { background-color: var(--bg-color); font-family: 'Montserrat', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: var(--text-color); }
         .container { background: var(--card-bg); padding: 40px; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        
         .btn-regresar { display: inline-block; margin-bottom: 15px; color: #8b92ff; text-decoration: none; font-size: 0.85rem; font-weight: 600; }
         .btn-regresar:hover { text-decoration: underline; }
+
         h2 { font-weight: 800; font-size: 1.2rem; margin-bottom: 25px; color: #8b92ff; text-transform: uppercase; letter-spacing: 2px; }
         input { width: 100%; padding: 15px; background: #1c2233; border: 2px solid transparent; border-radius: 10px; color: white; margin-bottom: 20px; outline: none; transition: 0.3s; }
         input:focus { border-color: var(--accent-color); }
@@ -28,24 +30,75 @@
         <button id="btnGuardar">Actualizar Datos</button>
     </div>
 
-    <script>
-        window.onload = () => {
+    <!-- Firebase SDK Modular -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // CONFIGURACIÓN DE TU FIREBASE (Reemplaza con tus datos)
+  const firebaseConfig = {
+    apiKey: "AIzaSyCd5NIu5q-iqD0CAQ0zjsObMEjzGCCsOf0",
+    authDomain: "prestamos2-af433.firebaseapp.com",
+    projectId: "prestamos2-af433",
+    storageBucket: "prestamos2-af433.firebasestorage.app",
+    messagingSenderId: "395076881965",
+    appId: "1:395076881965:web:ef9d5b5a3f58f73b9272a4"
+  };
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Referencia al documento (usaremos un ID fijo llamado 'configuracion')
+        const docRef = doc(db, "empresa", "datos_principales");
+
+        const inputs = { nombre: 'nombreEmpresa', telefono: 'telefonoEmpresa', ciudad: 'ciudadEmpresa' };
+
+        // Al cargar la página
+        window.onload = async () => {
+            // 1. Cargar de LocalStorage (para rapidez)
             const saved = JSON.parse(localStorage.getItem('datosEmpresa'));
             if(saved) {
-                document.getElementById('nombreEmpresa').value = saved.nombre;
-                document.getElementById('telefonoEmpresa').value = saved.telefono;
-                document.getElementById('ciudadEmpresa').value = saved.ciudad;
+                Object.keys(inputs).forEach(k => document.getElementById(inputs[k]).value = saved[k]);
+            }
+
+            // 2. Sincronizar con Firebase por si hay cambios en la nube
+            try {
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const cloudData = docSnap.data();
+                    Object.keys(inputs).forEach(k => {
+                        document.getElementById(inputs[k]).value = cloudData[k] || "";
+                    });
+                    // Actualizar cache local
+                    localStorage.setItem('datosEmpresa', JSON.stringify(cloudData));
+                }
+            } catch (error) {
+                console.error("Error al obtener datos de Firebase:", error);
             }
         };
 
-        document.getElementById('btnGuardar').addEventListener('click', () => {
+        // Al hacer click en Guardar
+        document.getElementById('btnGuardar').addEventListener('click', async () => {
             const data = { 
-                nombre: document.getElementById('nombreEmpresa').value, 
-                telefono: document.getElementById('telefonoEmpresa').value, 
-                ciudad: document.getElementById('ciudadEmpresa').value 
+                nombre: document.getElementById(inputs.nombre).value, 
+                telefono: document.getElementById(inputs.telefono).value, 
+                ciudad: document.getElementById(inputs.ciudad).value 
             };
-            localStorage.setItem('datosEmpresa', JSON.stringify(data));
-            alert("Datos actualizados correctamente.");
+
+            try {
+                // Guardar en Firebase
+                await setDoc(docRef, data);
+                
+                // Guardar en LocalStorage
+                localStorage.setItem('datosEmpresa', JSON.stringify(data));
+                
+                alert("Datos actualizados correctamente en la nube");
+            } catch (error) {
+                console.error("Error al guardar:", error);
+                alert("Error al sincronizar con Firebase. Se guardó localmente.");
+                localStorage.setItem('datosEmpresa', JSON.stringify(data));
+            }
         });
     </script>
 </body>
