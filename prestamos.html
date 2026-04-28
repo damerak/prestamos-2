@@ -30,20 +30,44 @@
             animation: fadeIn 0.3s ease;
         }
 
-        .barrio-card { background-color: var(--card-bg); border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); overflow: visible; }
-        .barrio-header { padding: 20px; background-color: #24293a; cursor: pointer; display: flex; justify-content: space-between; font-weight: 600; color: var(--accent-color); }
-        .barrio-content { display: none; padding: 15px; flex-direction: column; gap: 15px; }
-        .barrio-card.active .barrio-content { display: flex; }
-        .prestamo-item { background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 15px; position: relative; }
+        /* Contenedor de la lista plana */
+        #listaPrestamos { display: flex; flex-direction: column; gap: 15px; }
+
+        .prestamo-item { 
+            background-color: var(--card-bg); 
+            border: 1px solid var(--border-color); 
+            border-radius: 12px; 
+            padding: 20px; 
+            display: grid; 
+            grid-template-columns: 40px 1fr auto; 
+            align-items: center; 
+            gap: 15px; 
+            position: relative; 
+            transition: 0.3s;
+        }
+        .prestamo-item:hover { border-color: var(--accent-color); }
         
         .chk-prestamo { width: 20px; height: 20px; cursor: pointer; accent-color: var(--accent-color); }
 
         .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; }
         .label { font-size: 0.65rem; color: #7a829a; text-transform: uppercase; margin-bottom: 3px; }
         .value { font-size: 0.9rem; font-weight: 500; }
+        
+        /* Estilo para el barrio al lado del nombre */
+        .barrio-tag { 
+            font-size: 0.7rem; 
+            background: #2e344a; 
+            color: var(--accent-color); 
+            padding: 2px 8px; 
+            border-radius: 4px; 
+            margin-left: 10px; 
+            font-weight: 600;
+        }
+
         .saldo-destacado { color: var(--success); font-weight: 700; font-size: 1rem; }
         .progress-container { grid-column: 1 / -1; height: 6px; background: #24293a; border-radius: 10px; margin-top: 10px; overflow: hidden; }
         .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent-color), var(--success)); transition: width 0.5s; }
+        
         .dropdown { position: relative; }
         .btn-abonar { padding: 10px 20px; background-color: var(--accent-color); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
         .dropdown-content { display: none; position: absolute; right: 0; top: 45px; background-color: #24293a; min-width: 180px; z-index: 1000; border-radius: 8px; border: 1px solid var(--border-color); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
@@ -51,9 +75,7 @@
         .dropdown-content button:hover { background-color: var(--accent-color); }
         .btn-del { color: var(--danger) !important; border-top: 1px solid var(--border-color) !important; }
         
-        /* CAMBIO: Se añadió justify-content para que no ocupe todo el ancho */
         .input-otro-valor { display: none; margin-top: 15px; grid-column: 1 / -1; background: var(--input-bg); padding: 12px; border-radius: 8px; align-items: center; gap: 10px; border: 1px solid var(--accent-color); justify-content: flex-start; width: fit-content; }
-        /* CAMBIO: Se quitó flex: 1 y se puso un ancho inicial pequeño */
         .input-otro-valor input { width: 10ch; min-width: 60px; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background: #121420; color: white; outline: none; font-size: 1rem; transition: width 0.1s; }
         
         .btn-confirm { background: var(--success); color: #121420; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
@@ -68,29 +90,28 @@
 <body>
 <div class="container">
     <a href="index.html" class="btn-regresar">← Volver al Inicio</a>
-    <h2>Gestión de Préstamos Activos</h2>
+    <h2>Lista de Préstamos Activos (A-Z)</h2>
     <div class="header-actions">
         <input type="text" id="buscador" placeholder="Buscar por nombre, cédula o barrio...">
         <button id="btn-eliminar-varios" onclick="eliminarSeleccionados()">Eliminar Seleccionados</button>
     </div>
-    <div id="listaBarrios"></div>
+    <div id="listaPrestamos"></div>
 </div>
 
 <iframe id="iframeImpresion"></iframe>
 
-<!-- FIREBASE SDK -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, addDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCd5NIu5q-iqD0CAQ0zjsObMEjzGCCsOf0",
-    authDomain: "prestamos2-af433.firebaseapp.com",
-    projectId: "prestamos2-af433",
-    storageBucket: "prestamos2-af433.firebasestorage.app",
-    messagingSenderId: "395076881965",
-    appId: "1:395076881965:web:ef9d5b5a3f58f73b9272a4"
-  };
+    const firebaseConfig = {
+        apiKey: "AIzaSyCd5NIu5q-iqD0CAQ0zjsObMEjzGCCsOf0",
+        authDomain: "prestamos2-af433.firebaseapp.com",
+        projectId: "prestamos2-af433",
+        storageBucket: "prestamos2-af433.firebasestorage.app",
+        messagingSenderId: "395076881965",
+        appId: "1:395076881965:web:ef9d5b5a3f58f73b9272a4"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -98,7 +119,6 @@
     let prestamos = [];
     let clientes = [];
 
-    // Sincronización en tiempo real
     onSnapshot(collection(db, "clientes"), (snapshot) => {
         clientes = snapshot.docs.map(doc => ({ id_db: doc.id, ...doc.data() }));
         renderizar();
@@ -110,7 +130,7 @@
     });
 
     function renderizar() {
-        const contenedor = document.getElementById('listaBarrios');
+        const contenedor = document.getElementById('listaPrestamos');
         contenedor.innerHTML = "";
         const filtro = document.getElementById('buscador').value.toLowerCase();
         
@@ -121,6 +141,7 @@
             return { ...p, barrio: cli.barrio, cedula: cli.cedula, progreso: progresoVal };
         });
 
+        // Aplicar Filtro
         if (filtro) {
             datos = datos.filter(d => 
                 d.cliente.toLowerCase().includes(filtro) || 
@@ -129,71 +150,64 @@
             );
         }
 
-        const grupos = datos.reduce((acc, curr) => { 
-            if (!acc[curr.barrio]) acc[curr.barrio] = []; 
-            acc[curr.barrio].push(curr); 
-            return acc; 
-        }, {});
-        
-        for (const barrio in grupos) {
-            const div = document.createElement('div'); 
-            div.className = filtro ? 'barrio-card active' : 'barrio-card'; 
-            
-            div.innerHTML = `
-                <div class="barrio-header" onclick="this.parentElement.classList.toggle('active')">
-                    <span>📍 ${barrio.toUpperCase()}</span>
-                    <span>${grupos[barrio].length} Préstamos ▾</span>
-                </div>
-                <div class="barrio-content">
-                    ${grupos[barrio].map(p => `
-                        <div class="prestamo-item">
-                            <input type="checkbox" class="chk-prestamo" value="${p.id_db}" onclick="event.stopPropagation(); window.manejarCheckboxes()">
-                            <div class="info-grid">
-                                <div class="info-group">
-                                    <span class="label">Cliente</span>
-                                    <span class="value">${p.cliente}</span>
-                                </div>
-                                <div class="info-group">
-                                    <span class="label">Total / Int.</span>
-                                    <span class="value">${formatear(parseNum(p.total))} (${p.porcentaje}%)</span>
-                                </div>
-                                <div class="info-group">
-                                    <span class="label">Cuota Sugerida</span>
-                                    <span class="value">${formatear(parseNum(p.total) / p.cuotas)}</span>
-                                </div>
-                                <div class="info-group">
-                                    <span class="label">Saldo Pendiente</span>
-                                    <span class="value saldo-destacado">${formatear(p.saldo)}</span>
-                                </div>
-                                <div class="info-group" style="text-align:right">
-                                    <span class="label">Pagado</span>
-                                    <span class="value" style="color:var(--success)">${Math.round(p.progreso)}%</span>
-                                </div>
-                                <div class="progress-container">
-                                    <div class="progress-bar" style="width: ${p.progreso}%"></div>
-                                </div>
-                            </div>
-                            <div class="dropdown">
-                                <button class="btn-abonar" onclick="window.toggleMenu(event, '${p.id_db}')">Opciones ▾</button>
-                                <div id="menu-${p.id_db}" class="dropdown-content">
-                                    <button onclick="window.procesarPago('${p.id_db}', 'cuota')">Abonar Cuota</button>
-                                    <button onclick="window.procesarPago('${p.id_db}', 'total')">Abono Total</button>
-                                    <button onclick="window.mostrarOtroValor('${p.id_db}')">Otro Valor</button>
-                                    <button class="btn-del" onclick="window.eliminar('${p.id_db}')">Eliminar</button>
-                                </div>
-                            </div>
-                            <div class="input-otro-valor" id="otro-box-${p.id_db}">
-                                <button class="btn-confirm" onclick="window.procesarPago('${p.id_db}', 'otro')">OK</button>
-                                <input type="text" id="otro-input-${p.id_db}" placeholder="Valor..." oninput="window.aplicarMascara(this)">
-                            </div>
-                        </div>`).join('')}
-                </div>`;
-            contenedor.appendChild(div);
+        // ORDENAR ALFABÉTICAMENTE DE A-Z
+        datos.sort((a, b) => a.cliente.localeCompare(b.cliente));
+
+        if (datos.length === 0) {
+            contenedor.innerHTML = '<div style="text-align:center; padding:50px; color:#7a829a;">No se encontraron préstamos.</div>';
+            return;
         }
+        
+        contenedor.innerHTML = datos.map(p => `
+            <div class="prestamo-item">
+                <input type="checkbox" class="chk-prestamo" value="${p.id_db}" onclick="event.stopPropagation(); window.manejarCheckboxes()">
+                <div class="info-grid">
+                    <div class="info-group">
+                        <span class="label">Cliente</span>
+                        <div class="value">
+                            ${p.cliente} <span class="barrio-tag">${p.barrio}</span>
+                        </div>
+                    </div>
+                    <div class="info-group">
+                        <span class="label">Total / Int.</span>
+                        <span class="value">${formatear(parseNum(p.total))} (${p.porcentaje}%)</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="label">Cuota Sugerida</span>
+                        <span class="value">${formatear(parseNum(p.total) / p.cuotas)}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="label">Saldo Pendiente</span>
+                        <span class="value saldo-destacado">${formatear(p.saldo)}</span>
+                    </div>
+                    <div class="info-group" style="text-align:right">
+                        <span class="label">Pagado</span>
+                        <span class="value" style="color:var(--success)">${Math.round(p.progreso)}%</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width: ${p.progreso}%"></div>
+                    </div>
+                </div>
+                <div class="dropdown">
+                    <button class="btn-abonar" onclick="window.toggleMenu(event, '${p.id_db}')">Opciones ▾</button>
+                    <div id="menu-${p.id_db}" class="dropdown-content">
+                        <button onclick="window.procesarPago('${p.id_db}', 'cuota')">Abonar Cuota</button>
+                        <button onclick="window.procesarPago('${p.id_db}', 'total')">Abono Total</button>
+                        <button onclick="window.mostrarOtroValor('${p.id_db}')">Otro Valor</button>
+                        <button class="btn-del" onclick="window.eliminar('${p.id_db}')">Eliminar</button>
+                    </div>
+                </div>
+                <div class="input-otro-valor" id="otro-box-${p.id_db}">
+                    <button class="btn-confirm" onclick="window.procesarPago('${p.id_db}', 'otro')">OK</button>
+                    <input type="text" id="otro-input-${p.id_db}" placeholder="Valor..." oninput="window.aplicarMascara(this)">
+                </div>
+            </div>
+        `).join('');
+
         window.manejarCheckboxes();
     }
 
-    // --- FUNCIONES GLOBALES ---
+    // --- FUNCIONES GLOBALES MANTENIDAS ---
 
     window.manejarCheckboxes = function() {
         const seleccionados = document.querySelectorAll('.chk-prestamo:checked').length;
@@ -242,13 +256,13 @@
                     await updateDoc(doc(db, "prestamos", id_db), { saldo: nuevoSaldo });
                 }
             } catch (e) {
-                alert("Error al procesar el pago");
+                alert("Error al registrar el pago");
             }
         }
     };
 
     window.eliminar = async function(id_db) {
-        if(confirm("¿Estás seguro de eliminar este préstamo? Esta acción no se puede deshacer.")) {
+        if(confirm("¿Estás seguro de eliminar este préstamo?")) {
             await deleteDoc(doc(db, "prestamos", id_db));
         }
     };
@@ -264,21 +278,18 @@
         const box = document.getElementById(`otro-box-${id}`);
         box.classList.add('flex-show'); 
         document.getElementById(`menu-${id}`).classList.remove('show'); 
-        const input = document.getElementById(`otro-input-${id}`);
-        input.focus(); 
+        document.getElementById(`otro-input-${id}`).focus(); 
     };
 
-    // CAMBIO: La función ahora también ajusta el ancho (width) basándose en la longitud del texto
     window.aplicarMascara = function(i) { 
         let v = i.value.replace(/\D/g, ""); 
         i.value = v.replace(/\B(?=(\d{3})+(?!\d))/g, "."); 
-        // Ajuste dinámico de ancho
         i.style.width = i.value.length > 0 ? (i.value.length + 2) + "ch" : "10ch";
     };
 
     function generarRecibo(p, abono, nuevoSaldo) {
+        // Obteniendo datos de localStorage para la empresa
         const empresa = JSON.parse(localStorage.getItem('datosEmpresa')) || { nombre: "MI NEGOCIO", telefono: "---", ciudad: "---" };
-        const cf = JSON.parse(localStorage.getItem('ticketConfig')) || { width: 58, marginTop: 10, marginSide: 5, fontSize: 12, separator: "--------------------------------" };
         
         const iframe = document.getElementById('iframeImpresion');
         const win = iframe.contentWindow;
@@ -286,50 +297,31 @@
 
         docIframe.open();
         docIframe.write(`
-            <html>
-            <head>
-                <style>
-                    @page { margin: 0; size: auto; }
-                    body { 
-                        width: 48mm; margin: 0 auto; 
-                        padding: ${cf.marginTop}px 0; 
-                        text-align: center; color: #000;
-                        font-family: 'Courier New', monospace;
-                        font-size: ${cf.fontSize}px;
-                        line-height: 1.2;
-                    }
-                    .bold { font-weight: bold; }
-                    .sep { margin: 5px 0; overflow: hidden; white-space: nowrap; }
-                    .box { border: 1px solid #000; padding: 5px; margin: 8px 0; }
-                    .row { display: flex; justify-content: space-between; }
-                </style>
-            </head>
+            <html><head><style>
+                body { width: 48mm; margin: 0 auto; padding: 10px 0; text-align: center; font-family: 'Courier New', monospace; font-size: 12px; }
+                .bold { font-weight: bold; }
+                .sep { border-top: 1px dashed #000; margin: 5px 0; }
+                .box { border: 1px solid #000; padding: 5px; margin: 8px 0; }
+            </style></head>
             <body>
                 <div class="bold">${empresa.nombre.toUpperCase()}</div>
                 <div>TEL: ${empresa.telefono}</div>
-                <div>${empresa.ciudad.toUpperCase()}</div>
-                <div class="sep">${cf.separator}</div>
+                <div class="sep"></div>
                 <div class="bold">RECIBO DE ABONO</div>
-                <div class="sep">${cf.separator}</div>
+                <div class="sep"></div>
                 <div style="text-align:left">
                     FECHA: ${new Date().toLocaleDateString()}<br>
                     CLIENTE: ${p.cliente.toUpperCase()}
                 </div>
-                <div class="sep">${cf.separator}</div>
+                <div class="sep"></div>
                 <div class="box bold">PAGO: ${formatear(abono)}</div>
-                <div class="bold">SALDO RESTANTE: ${formatear(nuevoSaldo)}</div>
-                <div class="sep">${cf.separator}</div>
-                <div style="margin-top:10px;">¡Gracias por su puntualidad!</div>
-                <div style="height:40px">.</div>
-            </body>
-            </html>
+                <div class="bold">SALDO: ${formatear(nuevoSaldo)}</div>
+                <div class="sep"></div>
+                <div>¡Gracias por su pago!</div>
+            </body></html>
         `);
         docIframe.close();
-
-        setTimeout(() => {
-            win.focus();
-            win.print();
-        }, 500);
+        setTimeout(() => { win.focus(); win.print(); }, 500);
     }
 
     function parseNum(str) { 
