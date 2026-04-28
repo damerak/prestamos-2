@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cobros del Día - Gestorio</title>
+    <title>Cobros Diarios - Gestorio</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -35,7 +35,6 @@
 
         h2 { font-size: 1.4rem; margin-bottom: 20px; color: white; }
 
-        /* Buscador */
         #buscador { 
             width: 100%; 
             padding: 15px; 
@@ -47,13 +46,12 @@
             font-size: 1rem;
             outline: none;
         }
-        #buscador:focus { border-color: var(--accent-color); }
 
-        /* Estilo de Acordeón por Barrios */
+        /* Estilo de Acordeón */
         .barrio-card { 
             background-color: var(--card-bg); 
             border-radius: 12px; 
-            margin-bottom: 15px; 
+            margin-bottom: 10px; 
             border: 1px solid var(--border-color); 
             overflow: hidden; 
         }
@@ -66,11 +64,16 @@
             align-items: center;
             font-weight: 600;
         }
-        .barrio-content { display: none; padding: 10px; flex-direction: column; gap: 10px; }
+        .barrio-content { 
+            display: none; 
+            padding: 10px; 
+            flex-direction: column; 
+            gap: 10px; 
+        }
+        /* Clase para abrir el acordeón */
         .barrio-card.active .barrio-content { display: flex; }
         .barrio-card.active .barrio-header { border-bottom: 1px solid var(--border-color); color: var(--accent-color); }
 
-        /* Items de cobro */
         .cobro-item { 
             background-color: var(--bg-color); 
             border: 1px solid var(--border-color); 
@@ -81,8 +84,8 @@
             align-items: center;
         }
         .info-cli { flex: 1; }
-        .info-cli .nombre { display: block; font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
-        .info-cli .detalles { font-size: 0.75rem; color: #8b8ea1; }
+        .info-cli .nombre { display: block; font-weight: 600; font-size: 1rem; color: #fff; }
+        .info-cli .detalles { font-size: 0.8rem; color: #8b8ea1; }
         
         .mora-tag { 
             display: inline-block;
@@ -103,9 +106,7 @@
             border-radius: 8px; 
             font-weight: bold; 
             cursor: pointer;
-            transition: 0.2s;
         }
-        .btn-cobrar:active { transform: scale(0.95); }
 
         .empty-state { text-align: center; padding: 40px; color: #7a829a; }
         #iframeImpresion { display: none; }
@@ -117,26 +118,28 @@
 
 <div class="container">
     <a href="index.html" class="btn-regresar">← VOLVER AL INICIO</a>
-    <h2>Gestión de Cobros</h2>
+    <h2>Cobros Pendientes</h2>
     
     <input type="text" id="buscador" placeholder="Buscar cliente o barrio...">
 
     <div id="listaCobros">
-        <!-- Se carga dinámicamente -->
+        <!-- Contenido dinámico -->
     </div>
 </div>
 
 <iframe id="iframeImpresion"></iframe>
 
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyCd5NIu5q-iqD0CAQ0zjsObMEjzGCCsOf0",
-    authDomain: "prestamos2-af433.firebaseapp.com",
-    projectId: "prestamos2-af433",
-    storageBucket: "prestamos2-af433.firebasestorage.app",
-    messagingSenderId: "395076881965",
-    appId: "1:395076881965:web:ef9d5b5a3f58f73b9272a4"
-  };
+    // Configuración Firebase (Usando la del segundo archivo proporcionado)
+    const firebaseConfig = {
+        apiKey: "AIzaSyCarhhvBeuECGQL_6VU-huoK0hqu3q_lZ4",
+        authDomain: "prestamos-ba860.firebaseapp.com",
+        projectId: "prestamos-ba860",
+        storageBucket: "prestamos-ba860.firebasestorage.app",
+        messagingSenderId: "854942370995",
+        appId: "1:854942370995:web:06aba4cd63c03d12fb34c6"
+    };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
@@ -145,29 +148,39 @@
     let datosEmpresa = { nombre: "MI NEGOCIO", telefono: "000" };
 
     async function cargarDatos() {
-        // Cargar Datos Empresa
         db.collection('config').doc('empresa').onSnapshot(doc => { if(doc.exists) datosEmpresa = doc.data(); });
-
-        // Cargar Clientes para saber el barrio
         db.collection('clientes').onSnapshot(snapshot => {
             clientes = snapshot.docs.map(doc => doc.data());
             renderizarCobros();
         });
-
-        // Cargar Préstamos activos
         db.collection('prestamos').onSnapshot(snapshot => {
-            prestamos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            prestamos = snapshot.docs.map(doc => ({ id_firebase: doc.id, ...doc.data() }));
             renderizarCobros();
         });
     }
 
-    function calcularDiasTranscurridos(fecha) {
-        if (!fecha) return 0;
-        const partes = fecha.split('/');
-        const inicio = new Date(partes[2], partes[1] - 1, partes[0]);
-        const hoy = new Date(); hoy.setHours(0,0,0,0);
-        const diff = Math.floor((hoy - inicio) / (1000 * 60 * 60 * 24));
-        return diff < 0 ? 0 : diff;
+    // FUNCIÓN CRÍTICA: Cuenta días transcurridos EXCLUYENDO domingos
+    function calcularDiasCobro(fechaInicioStr) {
+        if (!fechaInicioStr) return 0;
+        
+        const partes = fechaInicioStr.split('/');
+        let fechaCursor = new Date(partes[2], partes[1] - 1, partes[0]);
+        fechaCursor.setHours(0, 0, 0, 0);
+        
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+
+        let diasEfectivos = 0;
+
+        // Empezamos a contar desde el día SIGUIENTE a la creación del préstamo
+        while (fechaCursor < hoy) {
+            fechaCursor.setDate(fechaCursor.getDate() + 1);
+            // Si no es domingo (0), se cuenta como día de cobro
+            if (fechaCursor.getDay() !== 0) {
+                diasEfectivos++;
+            }
+        }
+        return diasEfectivos;
     }
 
     function renderizarCobros() {
@@ -175,62 +188,74 @@
         const filtro = document.getElementById('buscador').value.toLowerCase();
         contenedor.innerHTML = "";
 
-        let listaFiltrada = prestamos.map(p => {
+        let listaMora = prestamos.map(p => {
             const cli = clientes.find(c => c.nombres === p.cliente) || { barrio: "SIN BARRIO" };
-            const diasDeuda = calcularDiasTranscurridos(p.fecha);
             
-            let cuotasDebe = 0;
-            if (p.frecuencia === 'semanal') {
-                cuotasDebe = Math.floor(diasDeuda / 7) - (p.abonosRealizados || 0);
-            } else {
-                cuotasDebe = diasDeuda - (p.abonosRealizados || 0);
-            }
+            // Valor de una sola cuota
+            const valorCuotaIndividual = parseNum(p.cuota) || (parseNum(p.total) / parseNum(p.cuotas));
+            
+            // Cuotas que deberían haberse pagado hasta hoy (sin domingos)
+            const cuotasQueDeberiaLlevar = calcularDiasCobro(p.fecha);
+            
+            // Cuotas que faltan por pagar de las que ya vencieron
+            const cuotasPendientes = cuotasQueDeberiaLlevar - (p.abonosRealizados || 0);
 
-            if (cuotasDebe <= 0) return null; // Está al día
+            if (cuotasPendientes <= 0) return null; // Está al día o es domingo y ya pagó lo anterior
 
-            return { ...p, barrio: cli.barrio.toUpperCase(), cuotasDebe };
+            return { 
+                ...p, 
+                barrio: cli.barrio.toUpperCase(), 
+                cuotasPendientes, 
+                valorCuotaIndividual,
+                montoACobrar: valorCuotaIndividual * cuotasPendientes 
+            };
         }).filter(item => item !== null);
 
-        // Filtro de búsqueda
         if (filtro) {
-            listaFiltrada = listaFiltrada.filter(f => 
+            listaMora = listaMora.filter(f => 
                 f.cliente.toLowerCase().includes(filtro) || 
                 f.barrio.toLowerCase().includes(filtro)
             );
         }
 
         // Agrupar por barrios
-        const grupos = listaFiltrada.reduce((acc, curr) => {
+        const grupos = listaMora.reduce((acc, curr) => {
             acc[curr.barrio] = acc[curr.barrio] || [];
             acc[curr.barrio].push(curr);
             return acc;
         }, {});
 
         if (Object.keys(grupos).length === 0) {
-            contenedor.innerHTML = '<div class="empty-state">No hay cobros pendientes hoy.</div>';
+            contenedor.innerHTML = '<div class="empty-state">No hay cobros pendientes (Hoy es domingo o todos están al día).</div>';
             return;
         }
 
         for (const barrio in grupos) {
             const card = document.createElement('div');
-            card.className = 'barrio-card active';
+            card.className = 'barrio-card'; // Sin la clase 'active' para que estén minimizados
             card.innerHTML = `
                 <div class="barrio-header" onclick="this.parentElement.classList.toggle('active')">
                     <span>📍 ${barrio}</span>
-                    <span>${grupos[barrio].length}</span>
+                    <span>${grupos[barrio].length} pendientes ▾</span>
                 </div>
                 <div class="barrio-content">
                     ${grupos[barrio].map(p => `
                         <div class="cobro-item">
                             <div class="info-cli">
                                 <span class="nombre">${p.cliente}</span>
-                                <span class="detalles">Saldo: ${formatear(p.saldo)} | Cuota: ${formatear(p.cuota || (parseNum(p.total)/p.cuotas))}</span>
+                                <span class="detalles">
+                                    Cuota diaria: ${formatear(p.valorCuotaIndividual)}<br>
+                                    Saldo restante: ${formatear(p.saldo)}
+                                </span>
                                 <br>
-                                <span class="mora-tag ${p.cuotasDebe > 1 ? 'mora-red' : 'mora-yellow'}">
-                                    PENDIENTE: ${p.cuotasDebe} ${p.frecuencia === 'semanal' ? 'SEM' : 'DÍA(S)'}
+                                <span class="mora-tag ${p.cuotasPendientes > 1 ? 'mora-red' : 'mora-yellow'}">
+                                    DEBE: ${p.cuotasPendientes} ${p.cuotasPendientes === 1 ? 'CUOTA' : 'CUOTAS'}
                                 </span>
                             </div>
-                            <button class="btn-cobrar" onclick="procesarCobro('${p.id}')">COBRAR</button>
+                            <div style="text-align:right">
+                                <div style="font-size:0.7rem; color:var(--success); font-weight:bold; margin-bottom:5px;">COBRAR: ${formatear(p.montoACobrar)}</div>
+                                <button class="btn-cobrar" onclick="procesarCobro('${p.id_firebase}', ${p.valorCuotaIndividual}, ${p.cuotasPendientes})">COBRAR</button>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
@@ -239,19 +264,19 @@
         }
     }
 
-    async function procesarCobro(id) {
-        const p = prestamos.find(x => x.id === id);
+    async function procesarCobro(id, valorCuota, cantidadCuotas) {
+        const p = prestamos.find(x => x.id_firebase === id);
         if (!p) return;
 
-        const valorCuota = p.cuota || (parseNum(p.total) / p.cuotas);
-        const nuevoSaldo = p.saldo - valorCuota;
-        const nuevosAbonos = (p.abonosRealizados || 0) + 1;
+        const montoTotalAbono = valorCuota * cantidadCuotas;
+        const nuevoSaldo = parseNum(p.saldo) - montoTotalAbono;
+        const nuevosAbonosContador = (p.abonosRealizados || 0) + cantidadCuotas;
 
         try {
-            // Guardar Historial para reimpresión
+            // Historial para control
             await db.collection('historial_impresiones').add({
                 cliente: p.cliente,
-                monto: valorCuota,
+                monto: montoTotalAbono,
                 saldo: nuevoSaldo,
                 fecha: new Date().toLocaleDateString(),
                 hora: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
@@ -263,29 +288,30 @@
             } else {
                 await db.collection('prestamos').doc(id).update({
                     saldo: nuevoSaldo,
-                    abonosRealizados: nuevosAbonos
+                    abonosRealizados: nuevosAbonosContador
                 });
             }
 
-            imprimirTicket(p.cliente, valorCuota, nuevoSaldo);
+            imprimirTicket(p.cliente, montoTotalAbono, nuevoSaldo);
             
         } catch (e) {
             alert("Error al registrar el cobro");
         }
     }
 
+    // Impresión (Tal cual la solicitaste)
     function imprimirTicket(cliente, abono, saldo) {
         const iframe = document.getElementById('iframeImpresion');
         const doc = iframe.contentWindow.document;
         doc.open();
         doc.write(`
             <html><head><style>
-                body { font-family: 'Courier New', monospace; width: 58mm; font-size: 12px; text-align: center; }
+                body { font-family: 'Courier New', monospace; width: 58mm; font-size: 12px; text-align: center; margin: 0; padding: 10px; }
                 .bold { font-weight: bold; }
                 .sep { border-top: 1px dashed black; margin: 10px 0; }
             </style></head>
             <body>
-                <div class="bold">${datosEmpresa.nombre}</div>
+                <div class="bold">${datosEmpresa.nombre.toUpperCase()}</div>
                 <div>TEL: ${datosEmpresa.telefono}</div>
                 <div class="sep"></div>
                 <div class="bold">RECIBO DE PAGO</div>
@@ -304,8 +330,14 @@
         setTimeout(() => { iframe.contentWindow.print(); }, 500);
     }
 
-    function parseNum(v) { return parseFloat(v.toString().replace(/\./g, '')) || 0; }
-    function formatear(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); }
+    function parseNum(v) { 
+        if(!v) return 0;
+        return parseFloat(v.toString().replace(/\./g, '').replace('$','')) || 0; 
+    }
+    
+    function formatear(n) { 
+        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); 
+    }
 
     document.getElementById('buscador').addEventListener('input', renderizarCobros);
     window.onload = cargarDatos;
